@@ -84,7 +84,12 @@ static int dev_open(struct inode *inodep, struct file *filep){
 }
 
 static ssize_t dev_read(struct file *filep, char *buffer, size_t len, loff_t *offset){
-    // int error_count = 0;
+    int error_count = 0;
+ 
+    printf(KERN_INFO, "PEEK-POKE: Buffer of read: %s", buffer);
+
+    buffer = "Something else ...";
+
     // error_count = copy_to_user(buffer, message, size_of_message);
     return 0;
 }
@@ -97,6 +102,9 @@ static ssize_t dev_write(struct file *filep, const char *buffer, size_t len, lof
 //    char temp[len];
 //    memset(temp, 0, sizeof temp);
 //    copy_from_user(temp, buffer, (unsigned long) len);   
+
+    printf(KERN_INFO, "PEEK-POKE: Device write buffer: %s", buffer);
+
    return len;
 }
 
