@@ -1,9 +1,9 @@
 ARCH=arm
 GCC=/usr/local/xtools/arm-unknown-linux-uclibcgnueabi/bin/arm-unknown-linux-uclibcgnueabi-
-obj-m := src/helloWorld.o #src/kernel/peek-poke-sys.o
+obj-m := src/kernel/peek-poke.o #src/helloWorld.o 
 KDIR := ~/felabs/sysdev/tinysystem/linux-2.6.34/
-DIR=src/user/
-TARGET := helloWorld#user-peek-poke-sys
+DIR=src/kernel/
+TARGET := peek-poke
 
 default: kernel $(TARGET)
 
@@ -11,12 +11,9 @@ kernel:
 	$(MAKE) ARCH=arm CROSS_COMPILE=$(GCC) -C $(KDIR) M=$(PWD) -o $@ $^  modules 
 	rm src/kernel/*.o 
 
-$(TARGET):
-	$(GCC)gcc $(DIR)$(TARGET).c -o $(DIR)$(TARGET)
-
-laptop:
-	make -C /lib/modules/$(shell uname -r)/build M=$(PWD) modules
+#$(TARGET):
+	#$(GCC)gcc $(DIR)$(TARGET).c -o $(DIR)$(TARGET)
 
 clean:
-	make -C /lib/modules/$(shell uname -r)/build M=$(PWD) modules clean # Fix bug where it first compiles, then cleans
-	rm $(DIR)/$(TARGET)
+	$(MAKE) -C $(KDIR) M=$(PWD) clean
+	rm $(DIR)/$(TARGET) # a
