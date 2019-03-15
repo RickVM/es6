@@ -27,13 +27,13 @@ static unsigned long registerCount = 0;
 static ssize_t data_read(struct device *dev, struct device_attribute *attr,
          char *buffer)
 {
+  int i;
   printk(KERN_INFO "sysfile_read (/sys/kernel/%s/%s) called\n", sysfs_dir,
          attr->attr.name);
-  
-  /*
-   * The only change here is that we now increment nr_buffer_reads (and
-   * don't worry about overflows - which you should in a real driver)
-   */
+
+  for(i = 0; i < registerCount; i++) {
+    printk("%lu", *(memAddr+i));
+  }
   return sprintf(buffer, "%lu", *memAddr);
 }
 
