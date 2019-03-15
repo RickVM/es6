@@ -1,5 +1,5 @@
 ARCH=arm
-GCC=/usr/local/xtools/arm-unknown-linux-uclibcgnueabi/bin/arm-unknown-linux-uclibcgnueabi-
+GCC=/usr/local/xtools/arm-unknown-linux-uclibcgnueabi/bin/arm-linux-
 obj-m := src/kernel/peek-poke.o #src/helloWorld.o 
 KDIR := ~/felabs/sysdev/tinysystem/linux-2.6.34/
 DIR=src/kernel/

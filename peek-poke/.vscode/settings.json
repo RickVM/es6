@@ -9,6 +9,9 @@
         "type_traits": "c",
         "chrono": "c",
         "module.h": "c",
-        "kernel.h": "c"
+        "kernel.h": "c",
+        "sysinfo.h": "c",
+        "types.h": "c",
+        "typeinfo": "c"
     }
 }

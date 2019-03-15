@@ -7,7 +7,7 @@
 #include <linux/kobject.h> /* Necessary because we use sysfs */
 #include <linux/module.h>  /* Specifically, a module */
 #include <mach/hardware.h>
-#include <linux/string.h>
+
 
 #define sysfs_dir "peek"
 #define sysfs_data "data"
@@ -22,19 +22,19 @@ MODULE_DESCRIPTION("sysfs poker");
 static char sysfs_buffer[sysfs_max_data_size + 1] =
     "Placeholder data"; /* an extra byte for the '\0' terminator */
 static ssize_t used_buffer_size = 0;
-static unsigned long  memAddr;
+static unsigned long* memAddr;
 
 static ssize_t data_read(struct device *dev, struct device_attribute *attr,
          char *buffer)
 {
   printk(KERN_INFO "sysfile_read (/sys/kernel/%s/%s) called\n", sysfs_dir,
          attr->attr.name);
-
+  
   /*
    * The only change here is that we now increment nr_buffer_reads (and
    * don't worry about overflows - which you should in a real driver)
    */
-  return sprintf(buffer, "%s", sysfs_buffer);
+  return sprintf(buffer, "%lu", *memAddr);
 }
 
 static ssize_t data_write(struct device *dev, struct device_attribute *attr,
@@ -61,29 +61,30 @@ static ssize_t address_read(struct device *dev, struct device_attribute *attr,
   printk(KERN_INFO "address read (/sys/kernel/%s/%s) called\n", sysfs_dir,
          attr->attr.name);
 
-  return sprintf(buffer, "%lu", io_v2p(memAddr));
+  return sprintf(buffer, "0x%lx", io_v2p((unsigned long)memAddr));
 }
 
 static ssize_t address_write(struct device *dev, struct device_attribute *attr,
         const char *buffer, size_t count)
 {
+    unsigned long cast;
   printk("Address write called. count: %d, value: %s\n", count, buffer);
   if(buffer == NULL) {
     printk(KERN_WARNING "Empty input buffer for memAddr");
     return -EINVAL;
   }
-  if(count > 5) {
-    count = 5;
+  if(count > 9) {
+    printk(KERN_WARNING "Input longer than 8");
+    count = 9;
   }
   // if bufffer is small enough
   //virtual to phyiscal
   // 4000NULL
-  unsigned long  * cast;
-  printk("Result %d", kstrtoul(buffer, 0x00, cast));
-  printk("Cast: %lu", *cast);
+
+  printk("Result %d", strict_strtoul(buffer, 16, &cast));
+  printk("Cast: 0x%lx", cast);
   
   memAddr = io_p2v(cast);
-  //strncpy(memAddr, temp, count);
   return count;
 }
 
