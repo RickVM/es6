@@ -23,7 +23,7 @@ static char sysfs_buffer[sysfs_max_data_size + 1] =
     "Placeholder data"; /* an extra byte for the '\0' terminator */
 static ssize_t used_buffer_size = 0;
 static unsigned long* memAddr;
-
+static unsigned long registerCount = 0;
 static ssize_t data_read(struct device *dev, struct device_attribute *attr,
          char *buffer)
 {
@@ -67,8 +67,8 @@ static ssize_t address_read(struct device *dev, struct device_attribute *attr,
 static ssize_t address_write(struct device *dev, struct device_attribute *attr,
         const char *buffer, size_t count)
 {
-    unsigned long cast;
-  printk("Address write called. count: %d, value: %s\n", count, buffer);
+  unsigned long cast;
+  printk("Address write called. value: %s\n", buffer);
   if(buffer == NULL) {
     printk(KERN_WARNING "Empty input buffer for memAddr");
     return -EINVAL;
@@ -77,26 +77,47 @@ static ssize_t address_write(struct device *dev, struct device_attribute *attr,
     printk(KERN_WARNING "Input longer than 8");
     count = 9;
   }
-  // if bufffer is small enough
-  //virtual to phyiscal
-  // 4000NULL
-
-  printk("Result %d", strict_strtoul(buffer, 16, &cast));
-  printk("Cast: 0x%lx", cast);
+  strict_strtoul(buffer, 16, &cast);
+  printk("Saved addres: 0x%lx", cast);
   
   memAddr = io_p2v(cast);
   return count;
 }
 
+static ssize_t count_read(struct device *dev, struct device_attribute *attr,
+       char *buffer)
+{
+  printk(KERN_INFO "address read (/sys/kernel/%s/%s) called\n", sysfs_dir,
+         attr->attr.name);
+
+  return sprintf(buffer, "%lu", registerCount);
+}
+
+static ssize_t count_write(struct device *dev, struct device_attribute *attr,
+        const char *buffer, size_t count)
+{
+  printk("count write called. value: %s\n", buffer);
+  if(buffer == NULL) {
+    printk(KERN_WARNING "Empty input buffer for memAddr");
+    return -EINVAL;
+  }
+
+  strict_strtoul(buffer, 10, &registerCount);
+  printk("Saved count: %lu", registerCount);
+  
+  return count;
+}
+
 static DEVICE_ATTR(data, S_IWUGO | S_IRUGO, data_read, data_write);
 static DEVICE_ATTR(address, S_IWUGO | S_IRUGO, address_read, address_write);
-
+static DEVICE_ATTR(count, S_IWUGO | S_IRUGO, count_read, count_write);
 /*
  * The only changes here are the added files to the file list:
  */
 static struct attribute *attrs[] = {
     &dev_attr_data.attr,
     &dev_attr_address.attr,
+    &dev_attr_count.attr,
     NULL /* need to NULL terminate the list of attributes */
 };
 static struct attribute_group attr_group = {
