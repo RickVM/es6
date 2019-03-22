@@ -19,40 +19,40 @@ MODULE_LICENSE("Dual BSD/GPL");
 MODULE_AUTHOR("Melis & Lit");
 MODULE_DESCRIPTION("sysfs poker");
 
-static char sysfs_buffer[sysfs_max_data_size + 1] =
-    "Placeholder data"; /* an extra byte for the '\0' terminator */
-static ssize_t used_buffer_size = 0;
 static unsigned long* memAddr;
 static unsigned long registerCount = 0;
 static ssize_t data_read(struct device *dev, struct device_attribute *attr,
          char *buffer)
 {
-  int i;
   printk(KERN_INFO "sysfile_read (/sys/kernel/%s/%s) called\n", sysfs_dir,
          attr->attr.name);
+  memcpy(buffer, memAddr,registerCount);
+  printk("%lu\n", *memAddr); // Print 4 bytes --> todo: refactor to print registercount bytes in right format.
 
-  for(i = 0; i < registerCount; i++) {
-    printk("%lu", *(memAddr+i));
-  }
-  return sprintf(buffer, "%lu", *memAddr);
+  return registerCount;
 }
 
+// Writing does not use registerCount to enable variable size writing,
 static ssize_t data_write(struct device *dev, struct device_attribute *attr,
           const char *buffer, size_t count)
 {
-  used_buffer_size =
-      count > sysfs_max_data_size
-    ? sysfs_max_data_size
-    : count; /* handle MIN(used_buffer_size, count) bytes */
-
+  char _buffer[9];
+  int result;
+  unsigned long data;
   printk(KERN_INFO "sysfile_write (/sys/kernel/%s/%s) called, buffer: "
-       "%s, count: %u\n", sysfs_dir, sysfs_data, buffer, count);
+      "%s, count: %u\n", sysfs_dir, sysfs_data, buffer, count);
 
-  memcpy(sysfs_buffer, buffer, used_buffer_size);
-  sysfs_buffer[used_buffer_size] = '\0'; /* this is correct, the buffer
-      is declared to be sysfs_max_data_size+1 bytes! */
-
-  return used_buffer_size;
+  if(count > 8) count = 8;
+  memcpy(_buffer, buffer, count);
+  _buffer[count] = '\0';
+  result = strict_strtoul(_buffer, 16, &data); // Write as hexadecimal
+  if(result != 0) {
+    printk(KERN_WARNING "Error occured writing data. Code: %d", result);
+    return -1;
+  }
+  *memAddr = data;
+  printk(" Request to write 0x%lx Written value is: 0x%lx", data, *memAddr);
+  return count;
 }
 
 static ssize_t address_read(struct device *dev, struct device_attribute *attr,
@@ -70,15 +70,15 @@ static ssize_t address_write(struct device *dev, struct device_attribute *attr,
   unsigned long cast;
   printk("Address write called. value: %s\n", buffer);
   if(buffer == NULL) {
-    printk(KERN_WARNING "Empty input buffer for memAddr");
+    printk(KERN_WARNING "Empty input buffer for memAddr\n");
     return -EINVAL;
   }
   if(count > 9) {
-    printk(KERN_WARNING "Input longer than 8");
+    printk(KERN_WARNING "Input longer than 8\n");
     count = 9;
   }
   strict_strtoul(buffer, 16, &cast);
-  printk("Saved addres: 0x%lx", cast);
+  printk("Saved addres: 0x%lx\n", cast);
   
   memAddr = io_p2v(cast);
   return count;
@@ -98,12 +98,12 @@ static ssize_t count_write(struct device *dev, struct device_attribute *attr,
 {
   printk("count write called. value: %s\n", buffer);
   if(buffer == NULL) {
-    printk(KERN_WARNING "Empty input buffer for memAddr");
+    printk(KERN_WARNING "Empty input buffer for memAddr\n");
     return -EINVAL;
   }
 
   strict_strtoul(buffer, 10, &registerCount);
-  printk("Saved count: %lu", registerCount);
+  printk("Saved count: %lu\n", registerCount);
   
   return count;
 }
