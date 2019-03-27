@@ -12,13 +12,12 @@
 #define pwm1_enable 11
 #define pwm1_freq 12
 #define pwm1_duty 13
-#define pwm2_duty 23
 #define pwm2_enable 21
 #define pwm2_freq 22
+#define pwm2_duty 23
 
-#define PWM1_CTRL 0x4005c000 
+#define PWM1_CTRL 0x4005c000  
 #define PWM2_CTRL 0x4005C004
-// Load with mknod type MAJOR MINOR
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Rick van Melis & Simon Lit");
@@ -43,6 +42,18 @@ static struct file_operations fops = {
   .write = dev_write,
   .release = dev_release
   };
+
+// ---- UTIL METHODES ---- 
+
+bool charp2bool (const char* value) {
+  return true;
+}
+
+uint8_t charp2int8 (const char* value) {
+  return 0;
+}
+
+// ---- INIT & EXIT ----
 
 static int __init pwm_init(void) {
   printk(KERN_INFO "PWM: Initializing the PWM\n");
@@ -88,86 +99,104 @@ static void __exit pwm_clean(void) {
   printk(KERN_INFO "PWM: Goodby from the LKM!\n");
 }
 
-// This function is called each time to the device is opened, only increments
-// the numberOpends counter.
+// ---- OPEN & RELEASE ----
+
 static int dev_open(struct inode *inodep, struct file *filep) {
   numberOpens++;
   printk(KERN_INFO "PWM: Device has been opened %d time(s)\n", numberOpens);
-
   // Todo: Use file to set private data field with minor num.
   minor_num = MINOR(inodep->i_rdev);
   printk(KERN_INFO "PWM: Opened for minor num: %i", minor_num);
   return 0;
 }
 
+static int dev_release(struct inode *inodep, struct file *filep) {
+  printk(KERN_INFO "PWM: Device is successfully closed");
+  return 0;
+}
+
+// ---- READ METHODES ----
+
 static ssize_t dev_read(struct file *filep, char *buffer, size_t len, loff_t *offset) {
   int error_count = 0;
   printk(KERN_INFO "PWM: Device has been read for minor num: %i", minor_num);
-  
+  // TODO buffer check  
   switch (minor_num) {
     case pwm1_enable:
-
       break;
-
     case pwm1_freq:
-
       break;
-
     case pwm1_duty:
-
       break;
     case pwm2_enable:
-
       break;
-
     case pwm2_freq:
-
       break;
-
     case pwm2_duty:
-
       break;
   }
   // error_count = copy_to_user(buffer, message, size_of_message);
   return 0;
 }
 
-static ssize_t dev_write(struct file *filep, const char *buffer, size_t len,
-                         loff_t *offset) {
+// ---- WRITE METHODES ----
+
+// Set bit 31 of the register with the value passed
+int writeEnable(unsigned long adress, bool value) {
+  return 0;
+}
+
+// Write to bits 15:8 for changing the output frequency
+int writePwm(unsigned long adress, uint8_t value) {
+  return 0;
+}
+
+// Wite to bits 7:0 for adjusting the duty cycle
+int writeDuty(unsigned long adress, uint8_t value) {
+  return 0;
+}
+
+
+static ssize_t dev_write(struct file *filep, const char *buffer, size_t len, loff_t *offset) {
   printk(KERN_INFO "PWM: Device has been written to for minor num: %i", minor_num);
   //    char temp[len];
   //    memset(temp, 0, sizeof temp);
   //    copy_from_user(temp, buffer, (unsigned long) len);
+  // Do a buffer check  
   switch (minor_num) {
     case pwm1_enable:
-
+      if (writeEnable(PWM1_CTRL ,charp2bool(buffer))) {
+        // TODO Check return value
+      }
       break;
-
     case pwm1_freq:
-
+      if (writePwm(PWM1_CTRL, charp2int8(buffer))) {
+        // TODO Check return value
+      }
       break;
-
     case pwm1_duty:
-
+      if (writeDuty(PWM1_CTRL, charp2int8(buffer))) {
+        // TODO Check return value
+      }
       break;
     case pwm2_enable:
-
+      if (writeEnable(PWM2_CTRL ,charp2bool(buffer))) {
+        // TODO Check return value
+      }
       break;
-
     case pwm2_freq:
-
+      if (writePwm(PWM2_CTRL, charp2int8(buffer))) {
+        // TODO Check return value
+      }
       break;
-
     case pwm2_duty:
-
+      if (writeDuty(PWM2_CTRL, charp2int8(buffer))) {
+        // TODO Check return value
+      }
       break;
   }
   return len;
 }
 
-static int dev_release(struct inode *inodep, struct file *filep) {
-  printk(KERN_INFO "PWM: Device is successfully closed");
-  return 0;
-}
 
 module_init(pwm_init) module_exit(pwm_clean)
