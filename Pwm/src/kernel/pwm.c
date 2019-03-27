@@ -45,10 +45,6 @@ static struct file_operations fops = {
 
 // ---- UTIL METHODES ---- 
 
-bool charp2bool (const char* value) {
-  return true;
-}
-
 uint8_t charp2int8 (const char* value) {
   return 0;
 }
@@ -117,24 +113,45 @@ static int dev_release(struct inode *inodep, struct file *filep) {
 
 // ---- READ METHODES ----
 
+uint8_t readEnable (unsigned int adress) {
+  return 0; 
+}
+
+uint8_t readFreq (unsigned int adress) {
+  return 0;
+}
+
+uint8_t readDuty (unsgined int adress) {
+  return 0;
+}
+
 static ssize_t dev_read(struct file *filep, char *buffer, size_t len, loff_t *offset) {
   int error_count = 0;
   printk(KERN_INFO "PWM: Device has been read for minor num: %i", minor_num);
   // TODO buffer check  
+  uint8_t value = 0;
   switch (minor_num) {
     case pwm1_enable:
+      value = readEnable(PWM1_CTRL);
       break;
     case pwm1_freq:
+      value = readFreq(PWM1_CTRL);
       break;
     case pwm1_duty:
+      value = readDuty(PWM1_CTRL);
       break;
     case pwm2_enable:
+      value = readEnable(PWM2_CTRL);
       break;
     case pwm2_freq:
+      value = readFreq(PWM2_CTRL);
       break;
     case pwm2_duty:
+      value = readDuty(PWM2_CTRL);
       break;
   }
+  // Check errorcoutn
+  // TODO Copy result back to user space
   // error_count = copy_to_user(buffer, message, size_of_message);
   return 0;
 }
@@ -142,17 +159,17 @@ static ssize_t dev_read(struct file *filep, char *buffer, size_t len, loff_t *of
 // ---- WRITE METHODES ----
 
 // Set bit 31 of the register with the value passed
-int writeEnable(unsigned long adress, bool value) {
+int writeEnable(unsigned int adress, uint8_t value) {
   return 0;
 }
 
 // Write to bits 15:8 for changing the output frequency
-int writePwm(unsigned long adress, uint8_t value) {
+int writeFreq(unsigned int adress, uint8_t value) {
   return 0;
 }
 
 // Wite to bits 7:0 for adjusting the duty cycle
-int writeDuty(unsigned long adress, uint8_t value) {
+int writeDuty(unsigned int adress, uint8_t value) {
   return 0;
 }
 
@@ -165,12 +182,12 @@ static ssize_t dev_write(struct file *filep, const char *buffer, size_t len, lof
   // Do a buffer check  
   switch (minor_num) {
     case pwm1_enable:
-      if (writeEnable(PWM1_CTRL ,charp2bool(buffer))) {
+      if (writeEnable(PWM1_CTRL ,charp2int8(buffer))) {
         // TODO Check return value
       }
       break;
     case pwm1_freq:
-      if (writePwm(PWM1_CTRL, charp2int8(buffer))) {
+      if (writeFreq(PWM1_CTRL, charp2int8(buffer))) {
         // TODO Check return value
       }
       break;
@@ -180,12 +197,12 @@ static ssize_t dev_write(struct file *filep, const char *buffer, size_t len, lof
       }
       break;
     case pwm2_enable:
-      if (writeEnable(PWM2_CTRL ,charp2bool(buffer))) {
+      if (writeEnable(PWM2_CTRL ,charp2int8(buffer))) {
         // TODO Check return value
       }
       break;
     case pwm2_freq:
-      if (writePwm(PWM2_CTRL, charp2int8(buffer))) {
+      if (writeFreq(PWM2_CTRL, charp2int8(buffer))) {
         // TODO Check return value
       }
       break;
