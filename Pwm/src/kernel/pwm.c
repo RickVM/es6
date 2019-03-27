@@ -121,15 +121,15 @@ uint8_t readFreq (unsigned int adress) {
   return 0;
 }
 
-uint8_t readDuty (unsgined int adress) {
+uint8_t readDuty (unsigned int adress) {
   return 0;
 }
 
 static ssize_t dev_read(struct file *filep, char *buffer, size_t len, loff_t *offset) {
-  int error_count = 0;
+  // int error_count = 0;
+  uint8_t value = 0;
   printk(KERN_INFO "PWM: Device has been read for minor num: %i", minor_num);
   // TODO buffer check  
-  uint8_t value = 0;
   switch (minor_num) {
     case pwm1_enable:
       value = readEnable(PWM1_CTRL);
