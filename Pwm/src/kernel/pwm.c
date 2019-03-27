@@ -4,7 +4,7 @@
 #include <linux/kdev_t.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
-#include <linux/uaccess.h> 
+#include <linux/uaccess.h>
 
 #define DEVICE_NAME "pwm"
 #define CLASS_NAME "es6"
@@ -42,12 +42,6 @@ static struct file_operations fops = {
   .write = dev_write,
   .release = dev_release
   };
-
-// ---- UTIL METHODES ---- 
-
-uint8_t charp2int8 (const char* value) {
-  return 0;
-}
 
 // ---- INIT & EXIT ----
 
@@ -150,10 +144,9 @@ static ssize_t dev_read(struct file *filep, char *buffer, size_t len, loff_t *of
       value = readDuty(PWM2_CTRL);
       break;
   }
-  // Check errorcoutn
   // TODO Copy result back to user space
-  // error_count = copy_to_user(buffer, message, size_of_message);
-  return 0;
+  // error_count = copy_to_user(buffer, value, size_of_message);
+  return 0 /*error_count*/;
 }
 
 // ---- WRITE METHODES ----
@@ -175,39 +168,54 @@ int writeDuty(unsigned int adress, uint8_t value) {
 
 
 static ssize_t dev_write(struct file *filep, const char *buffer, size_t len, loff_t *offset) {
+  unsigned long res = 0;
+  uint8_t value = 0;
+  int retv = 0;
   printk(KERN_INFO "PWM: Device has been written to for minor num: %i", minor_num);
-  //    char temp[len];
-  //    memset(temp, 0, sizeof temp);
-  //    copy_from_user(temp, buffer, (unsigned long) len);
-  // Do a buffer check  
+
+  retv = strict_strtoul(buffer, 10, &res);
+  
+  if (retv) {
+    printk(KERN_INFO "PWM: Input for writing to device is invalid. Not number a number.");
+    return retv;
+  }
+
+  if (res > 255 || res < 0) {
+    printk(KERN_INFO "PWM: Input for wirting to device is invalid. Not a uint8_t.");
+  }
+  
+  value = res;
+
+  printk(KERN_INFO "PWM: Input value is: %i", value);
+
   switch (minor_num) {
     case pwm1_enable:
-      if (writeEnable(PWM1_CTRL ,charp2int8(buffer))) {
+      if (writeEnable(PWM1_CTRL ,value)) {
         // TODO Check return value
       }
       break;
     case pwm1_freq:
-      if (writeFreq(PWM1_CTRL, charp2int8(buffer))) {
+      if (writeFreq(PWM1_CTRL, value)) {
         // TODO Check return value
       }
       break;
     case pwm1_duty:
-      if (writeDuty(PWM1_CTRL, charp2int8(buffer))) {
+      if (writeDuty(PWM1_CTRL, value)) {
         // TODO Check return value
       }
       break;
     case pwm2_enable:
-      if (writeEnable(PWM2_CTRL ,charp2int8(buffer))) {
+      if (writeEnable(PWM2_CTRL ,value)) {
         // TODO Check return value
       }
       break;
     case pwm2_freq:
-      if (writeFreq(PWM2_CTRL, charp2int8(buffer))) {
+      if (writeFreq(PWM2_CTRL, value)) {
         // TODO Check return value
       }
       break;
     case pwm2_duty:
-      if (writeDuty(PWM2_CTRL, charp2int8(buffer))) {
+      if (writeDuty(PWM2_CTRL, value)) {
         // TODO Check return value
       }
       break;
