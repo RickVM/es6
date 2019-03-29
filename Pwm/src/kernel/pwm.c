@@ -26,6 +26,10 @@
 #define PWM_DUTY 0xFFFFFF00
 #define PWM_FREQ 0xFFFF00FF
 #define PWM_FREQ_OFFSET 8
+#define PWM_CLOCK 0x400040B8 // bits 11:8 for pwm2 and bits 7:4 for pwm1
+#define PWM2_CLK_BIT 7
+#define PWM1_CLK_BIT 3
+#define PWM_CLOCK_FREQUENCY 13000000
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Rick van Melis & Simon Lit");
@@ -54,6 +58,8 @@ static struct file_operations fops = {
 // ---- INIT & EXIT ----
 
 static int __init pwm_init(void) {
+  unsigned long* clockMemAddr = 0;
+  
   printk(KERN_INFO "PWM: Initializing the PWM\n");
 
   majorNumber = register_chrdev(0, DEVICE_NAME, &fops);
@@ -85,6 +91,11 @@ static int __init pwm_init(void) {
   }
   
   printk(KERN_INFO "PWM: device class created correctly\n");
+
+  // Set the clock for PWM1 en PWM2 to standard clock
+  clockMemAddr = io_p2v(PWM_CLOCK);
+  *clockMemAddr = *clockMemAddr & ~(1 << PWM1_CLK_BIT);
+  *clockMemAddr = *clockMemAddr & ~(1 << PWM2_CLK_BIT);
 
   return 0;
 }
@@ -137,6 +148,7 @@ uint8_t readFreq (unsigned long address) {
   printk(KERN_INFO "PWM: Decimal value of memAddress is: %lu", *memAddr);
 
   temp = *memAddr >> PWM_FREQ_OFFSET;
+  printk(KERN_INFO "PWM: Freq temp is %d", temp);
   value = (uint8_t)temp;
   printk(KERN_INFO "PWM: Freq value is %d", value);
 
@@ -213,6 +225,12 @@ int writeEnable(unsigned long address, uint8_t value) {
 int writeFreq(unsigned long address, uint8_t value) {
   unsigned long* memAddr = 0;
 
+  if (value < 198 && value > 50000){
+    printk(KERN_INFO "PWM: Frequency, incorrect input. Should be between 198 and 50000 hz.");
+  }
+
+  // TODO Calculate frequency
+
   printk(KERN_INFO "PWM: Freq, writing a freq of %d", value);
 
   memAddr = io_p2v(address);
@@ -224,11 +242,19 @@ int writeFreq(unsigned long address, uint8_t value) {
 // Wite to bits 7:0 for adjusting the duty cycle
 int writeDuty(unsigned long address, uint8_t value) {
   unsigned long* memAddr = 0;
+  uint8_t res = 0; 
 
-  printk(KERN_INFO "PWM: Duty, writing a duty of %d", value);
+  if (value > 100) {
+    printk(KERN_INFO "PWM: Duty, incorrect input. Should be between 0 and 100 procent.");
+    return -1; // TODO Return correct error
+  }
+
+  res = value * 255 / 100;
+
+  printk(KERN_INFO "PWM: Duty, writing a duty of %d", res);
 
   memAddr = io_p2v(address);
-  *memAddr = (*memAddr & PWM_DUTY) | value;
+  *memAddr = (*memAddr & PWM_DUTY) | res;
 
   return 0;
 }
@@ -237,7 +263,6 @@ int writeDuty(unsigned long address, uint8_t value) {
 static ssize_t dev_write(struct file *filep, const char *buffer, size_t len, loff_t *offset) {
   int retv = 0;
   char _buffer[len];
-  uint8_t value = 0;
   unsigned long int res = 0;
   char *ptr;
 
@@ -250,59 +275,37 @@ static ssize_t dev_write(struct file *filep, const char *buffer, size_t len, lof
   // TODO Check for negative numbers, they are now coverted to a zero. Not exactly what we want
   
   res = simple_strtoul(_buffer, &ptr, 10);
+  
   printk(KERN_INFO "PWM: Number is %lu", res);
-  
-  if (res > 255 || res < 0) {
-    printk(KERN_INFO "PWM: Input for writing to device is invalid. Not a uint8_t.");
-    return -1; // TODO Return the correct error here
-  }
-  
-  value = (uint8_t) res;
-  
-  printk(KERN_INFO "PWM: Input value is: %i", value);
 
   switch (minor_num) {
     case pwm1_enable:
-      if (writeEnable(PWM1_CTRL ,value)) {
+      if (writeEnable(PWM1_CTRL ,(uint8_t)res)) {
         // TODO Check return value
       }
       break;
     case pwm1_freq:
-      if (writeFreq(PWM1_CTRL, value)) {
-        // TODO Check return value
+      if (writeFreq(PWM1_CTRL, (uint32_t)res)) {
+          // TODO Check return value
       }
       break;
     case pwm1_duty:
-      if (value > 100) {
-        printk(KERN_INFO "PWM: Duty, incorrect input. Should be between 0 and 100 procent.");
-        return -1; // TODO Return correct error
-      }
-
-      value = value * 255 / 100;
-
-      if (writeDuty(PWM1_CTRL, value)) {
+      if (writeDuty(PWM1_CTRL, (uint8_t)res)) {
         // TODO Check return value
       }
       break;
     case pwm2_enable:
-      if (writeEnable(PWM2_CTRL ,value)) {
+      if (writeEnable(PWM2_CTRL ,(uint8_t)res)) {
         // TODO Check return value
       }
       break;
     case pwm2_freq:
-      if (writeFreq(PWM2_CTRL, value)) {
+      if (writeFreq(PWM2_CTRL, (uint32_t)res)) {
         // TODO Check return value
       }
       break;
     case pwm2_duty:
-      if (value > 100) {
-        printk(KERN_INFO "PWM: Duty, incorrect input. Should be between 0 and 100 procent.");
-        return -1; // TODO Return correct error
-      }
-
-      value = value * 255 / 100;
-
-      if (writeDuty(PWM2_CTRL, value)) {
+      if (writeDuty(PWM2_CTRL, (uint8_t)res)) {
         // TODO Check return value
       }
       break;
