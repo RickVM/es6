@@ -1,6 +1,3 @@
-// J3 PWM2 5de van rechtsboven
-// J! PWM! 8ste van rechst
-
 #include <linux/device.h> 
 #include <linux/fs.h>
 #include <linux/init.h>
@@ -21,14 +18,14 @@
 #define pwm2_duty 23
 
 #define PWM1_CTRL 0x4005c000  
-#define PWM2_CTRL 0x4005C004
+#define PWM2_CTRL 0x4005C004  
 #define PWM_ENABLE_BIT 30
 #define PWM_DUTY 0xFFFFFF00
 #define PWM_FREQ 0xFFFF00FF
 #define PWM_FREQ_OFFSET 8
 #define PWM_CLOCK 0x400040B8 // bits 11:8 for pwm2 and bits 7:4 for pwm1
-#define PWM2_CLK_BIT 7
-#define PWM1_CLK_BIT 3
+#define PWM2_CLK_FREQ_BIT 8
+#define PWM1_CLK_FREQ_BIT 4
 #define PWM_CLOCK_FREQUENCY 13000000
 
 MODULE_LICENSE("GPL");
@@ -94,9 +91,10 @@ static int __init pwm_init(void) {
 
   // Set the clock for PWM1 en PWM2 to standard clock
   clockMemAddr = io_p2v(PWM_CLOCK);
-  *clockMemAddr = *clockMemAddr & ~(1 << PWM1_CLK_BIT);
-  *clockMemAddr = *clockMemAddr & ~(1 << PWM2_CLK_BIT);
 
+  *clockMemAddr = *clockMemAddr & ~(1 << PWM1_CLK_FREQ_BIT);
+  *clockMemAddr = *clockMemAddr & ~(1 << PWM2_CLK_FREQ_BIT);
+  
   return 0;
 }
 
@@ -240,7 +238,7 @@ int writeFreq(unsigned long address, uint32_t value) {
   printk(KERN_INFO "PWM: Freq write, reloadv value: %d", reloadv);
 
   memAddr = io_p2v(address);
-  *memAddr = (*memAddr & PWM_FREQ) | (value << PWM_FREQ_OFFSET);
+  *memAddr = (*memAddr & PWM_FREQ) | (reloadv << PWM_FREQ_OFFSET);
 
   return 0;
 }
