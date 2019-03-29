@@ -5,6 +5,7 @@
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/uaccess.h>
+#include <mach/hardware.h>
 
 #define DEVICE_NAME "pwm"
 #define CLASS_NAME "es6"
@@ -18,6 +19,7 @@
 
 #define PWM1_CTRL 0x4005c000  
 #define PWM2_CTRL 0x4005C004
+#define PWM_ENABLE_BIT 30
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Rick van Melis & Simon Lit");
@@ -107,15 +109,15 @@ static int dev_release(struct inode *inodep, struct file *filep) {
 
 // ---- READ METHODES ----
 
-uint8_t readEnable (unsigned int adress) {
+uint8_t readEnable (unsigned long adress) {
   return 0; 
 }
 
-uint8_t readFreq (unsigned int adress) {
+uint8_t readFreq (unsigned long adress) {
   return 0;
 }
 
-uint8_t readDuty (unsigned int adress) {
+uint8_t readDuty (unsigned long adress) {
   return 0;
 }
 
@@ -152,17 +154,40 @@ static ssize_t dev_read(struct file *filep, char *buffer, size_t len, loff_t *of
 // ---- WRITE METHODES ----
 
 // Set bit 31 of the register with the value passed
-int writeEnable(unsigned int adress, uint8_t value) {
+int writeEnable(unsigned long adress, uint8_t value) {
+  unsigned long* memAddr = 0;
+
+  if (value != 0 && value != 1) {
+    printk(KERN_INFO "PWM: Enable, incorrect input. Should be 0 or 1.");
+    return -1; // TODO Return correct error
+  }
+
+  memAddr = io_p2v(adress);
+
+  switch (value) {
+    case 0: 
+      *memAddr = *memAddr & ~(1 << PWM_ENABLE_BIT); 
+      break;
+    case 1:
+      *memAddr = *memAddr | (1 << PWM_ENABLE_BIT); 
+      break;
+  }
+
   return 0;
 }
 
 // Write to bits 15:8 for changing the output frequency
-int writeFreq(unsigned int adress, uint8_t value) {
+int writeFreq(unsigned long adress, uint8_t value) {
+  // TODO Freq range check
   return 0;
 }
 
 // Wite to bits 7:0 for adjusting the duty cycle
-int writeDuty(unsigned int adress, uint8_t value) {
+int writeDuty(unsigned long adress, uint8_t value) {
+  if (value > 100) {
+    printk(KERN_INFO "PWM: Duty, incorrect input. Should be between 0 and 100.");
+    return -1; // TODO Return correct error
+  }
   return 0;
 }
 
