@@ -101,7 +101,7 @@ static int dev_open(struct inode *inodep, struct file *filep) {
 }
 
 static int dev_release(struct inode *inodep, struct file *filep) {
-  printk(KERN_INFO "PWM: Device is successfully closed");
+  printk(KERN_INFO "PWM: Device is successfully closed\n");
   return 0;
 }
 
@@ -168,24 +168,30 @@ int writeDuty(unsigned int adress, uint8_t value) {
 
 
 static ssize_t dev_write(struct file *filep, const char *buffer, size_t len, loff_t *offset) {
-  unsigned long res = 0;
-  uint8_t value = 0;
   int retv = 0;
+  char _buffer[len];
+  uint8_t value = 0;
+  unsigned long int res = 0;
+  char *ptr;
+
   printk(KERN_INFO "PWM: Device has been written to for minor num: %i", minor_num);
-
-  retv = strict_strtoul(buffer, 10, &res);
   
-  if (retv) {
-    printk(KERN_INFO "PWM: Input for writing to device is invalid. Not number a number.");
-    return retv;
-  }
-
+  memset(_buffer, 0, sizeof _buffer);
+  retv = copy_from_user(_buffer, buffer, (unsigned long) len);   
+  
+  // TODO Check return value
+  // TODO Check for negative numbers, they are now coverted to a zero. Not exactly what we want
+  
+  res = simple_strtoul(_buffer, &ptr, 10);
+  printk(KERN_INFO "PWM: Number is %lu", res);
+  
   if (res > 255 || res < 0) {
-    printk(KERN_INFO "PWM: Input for wirting to device is invalid. Not a uint8_t.");
+    printk(KERN_INFO "PWM: Input for writing to device is invalid. Not a uint8_t.");
+    return -1; // TODO Return the correct error here
   }
   
-  value = res;
-
+  value = (uint8_t) res;
+  
   printk(KERN_INFO "PWM: Input value is: %i", value);
 
   switch (minor_num) {
