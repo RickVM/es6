@@ -20,6 +20,7 @@
 #define PWM1_CTRL 0x4005c000  
 #define PWM2_CTRL 0x4005C004
 #define PWM_ENABLE_BIT 30
+#define PWM_DUTY_BIT 6
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Rick van Melis & Simon Lit");
@@ -185,16 +186,20 @@ int writeEnable(unsigned long adress, uint8_t value) {
 
 // Write to bits 15:8 for changing the output frequency
 int writeFreq(unsigned long adress, uint8_t value) {
-  // TODO Freq range check
+  // TODO Enter frequency as hz and not as a number between 0 and 255
+
   return 0;
 }
 
 // Wite to bits 7:0 for adjusting the duty cycle
 int writeDuty(unsigned long adress, uint8_t value) {
-  if (value > 100) {
-    printk(KERN_INFO "PWM: Duty, incorrect input. Should be between 0 and 100.");
-    return -1; // TODO Return correct error
-  }
+  unsigned long * memAddr = 0;
+
+  printk(KERN_INFO "PWM: Duty, writing a duty of %d", value);
+
+  memAddr = io_p2v(adress);
+  *memAddr = (*memAddr & 0xFFFFFF00) | value;
+
   return 0;
 }
 
@@ -238,6 +243,11 @@ static ssize_t dev_write(struct file *filep, const char *buffer, size_t len, lof
       }
       break;
     case pwm1_duty:
+      // TODO Be able to enter a duty cycle of 100 % instead of 255
+      // if (value > 100) {
+      //   printk(KERN_INFO "PWM: Duty, incorrect input. Should be between 0 and 100 procent.");
+      //   return -1; // TODO Return correct error
+      // }
       if (writeDuty(PWM1_CTRL, value)) {
         // TODO Check return value
       }
