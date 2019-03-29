@@ -20,7 +20,7 @@
 #define PWM1_CTRL 0x4005c000  
 #define PWM2_CTRL 0x4005C004
 #define PWM_ENABLE_BIT 30
-#define PWM_DUTY_BIT 6
+#define PWM_DUTY 0xFFFFFF00
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Rick van Melis & Simon Lit");
@@ -128,7 +128,16 @@ uint8_t readFreq (unsigned long adress) {
 }
 
 uint8_t readDuty (unsigned long adress) {
-  return 0;
+  unsigned long* memAddr = NULL;
+  u_int8_t value = 0;
+
+  memAddr = io_p2v(adress);
+  printk(KERN_INFO "PWM: Decimal value of memAddress is: %lu", *memAddr);
+
+  value = *memAddr | (PWM_DUTY);
+  printk(KERN_INFO "PWM: Duty value is %d", value);
+
+  return value;
 }
 
 static ssize_t dev_read(struct file *filep, char *buffer, size_t len, loff_t *offset) {
@@ -198,7 +207,7 @@ int writeDuty(unsigned long adress, uint8_t value) {
   printk(KERN_INFO "PWM: Duty, writing a duty of %d", value);
 
   memAddr = io_p2v(adress);
-  *memAddr = (*memAddr & 0xFFFFFF00) | value;
+  *memAddr = (*memAddr & PWM_DUTY) | value;
 
   return 0;
 }
