@@ -21,6 +21,8 @@
 #define PWM2_CTRL 0x4005C004
 #define PWM_ENABLE_BIT 30
 #define PWM_DUTY 0xFFFFFF00
+#define PWM_FREQ 0xFFFF00FF
+#define PWM_FREQ_OFFSET 8
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Rick van Melis & Simon Lit");
@@ -110,11 +112,11 @@ static int dev_release(struct inode *inodep, struct file *filep) {
 
 // ---- READ METHODES ----
 
-uint8_t readEnable (unsigned long adress) {
+uint8_t readEnable (unsigned long address) {
   unsigned long* memAddr = NULL;
   uint8_t value = 0;
 
-  memAddr = io_p2v(adress);
+  memAddr = io_p2v(address);
   printk(KERN_INFO "PWM: Decimal value of memAddress is: %lu", *memAddr);
   
   value = *memAddr & (1 << PWM_ENABLE_BIT);
@@ -123,18 +125,27 @@ uint8_t readEnable (unsigned long adress) {
   return value; 
 }
 
-uint8_t readFreq (unsigned long adress) {
-  return 0;
-}
-
-uint8_t readDuty (unsigned long adress) {
+uint8_t readFreq (unsigned long address) {
   unsigned long* memAddr = NULL;
   u_int8_t value = 0;
 
-  memAddr = io_p2v(adress);
+  memAddr = io_p2v(address);
   printk(KERN_INFO "PWM: Decimal value of memAddress is: %lu", *memAddr);
 
-  value = *memAddr | (PWM_DUTY);
+  value = *memAddr & (*memAddr | PWM_FREQ);
+  printk(KERN_INFO "PWM: Freq value is %d", value);
+
+  return value;
+}
+
+uint8_t readDuty (unsigned long address) {
+  unsigned long* memAddr = NULL;
+  u_int8_t value = 0;
+
+  memAddr = io_p2v(address);
+  printk(KERN_INFO "PWM: Decimal value of memAddress is: %lu", *memAddr);
+
+  value = *memAddr & (*memAddr | PWM_DUTY);
   printk(KERN_INFO "PWM: Duty value is %d", value);
 
   return value;
@@ -171,7 +182,7 @@ static ssize_t dev_read(struct file *filep, char *buffer, size_t len, loff_t *of
 // ---- WRITE METHODES ----
 
 // Set bit 31 of the register with the value passed
-int writeEnable(unsigned long adress, uint8_t value) {
+int writeEnable(unsigned long address, uint8_t value) {
   unsigned long* memAddr = 0;
 
   if (value != 0 && value != 1) {
@@ -179,7 +190,7 @@ int writeEnable(unsigned long adress, uint8_t value) {
     return -1; // TODO Return correct error
   }
 
-  memAddr = io_p2v(adress);
+  memAddr = io_p2v(address);
 
   switch (value) {
     case 0: 
@@ -194,19 +205,24 @@ int writeEnable(unsigned long adress, uint8_t value) {
 }
 
 // Write to bits 15:8 for changing the output frequency
-int writeFreq(unsigned long adress, uint8_t value) {
-  // TODO Enter frequency as hz and not as a number between 0 and 255
+int writeFreq(unsigned long address, uint8_t value) {
+  unsigned long* memAddr = 0;
+
+  printk(KERN_INFO "PWM: Freq, writing a freq of %d", value);
+
+  memAddr = io_p2v(address);
+  *memAddr = (*memAddr & PWM_FREQ) | (value << PWM_FREQ_OFFSET);
 
   return 0;
 }
 
 // Wite to bits 7:0 for adjusting the duty cycle
-int writeDuty(unsigned long adress, uint8_t value) {
-  unsigned long * memAddr = 0;
+int writeDuty(unsigned long address, uint8_t value) {
+  unsigned long* memAddr = 0;
 
   printk(KERN_INFO "PWM: Duty, writing a duty of %d", value);
 
-  memAddr = io_p2v(adress);
+  memAddr = io_p2v(address);
   *memAddr = (*memAddr & PWM_DUTY) | value;
 
   return 0;
