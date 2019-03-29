@@ -132,7 +132,7 @@ uint8_t readFreq (unsigned long address) {
   memAddr = io_p2v(address);
   printk(KERN_INFO "PWM: Decimal value of memAddress is: %lu", *memAddr);
 
-  value = *memAddr & (*memAddr | PWM_FREQ);
+  value = (*memAddr & (*memAddr | PWM_FREQ)) >> PWM_FREQ_OFFSET;
   printk(KERN_INFO "PWM: Freq value is %d", value);
 
   return value;
