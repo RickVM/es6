@@ -127,12 +127,12 @@ uint8_t readEnable (unsigned long address) {
 
 uint8_t readFreq (unsigned long address) {
   unsigned long* memAddr = NULL;
-  u_int8_t value = 0;
+  uint8_t value = 0;
 
   memAddr = io_p2v(address);
   printk(KERN_INFO "PWM: Decimal value of memAddress is: %lu", *memAddr);
 
-  value = (*memAddr & (*memAddr | PWM_FREQ)) >> PWM_FREQ_OFFSET;
+  value = memAddr >> PWM_FREQ_OFFSET;
   printk(KERN_INFO "PWM: Freq value is %d", value);
 
   return value;
@@ -140,7 +140,7 @@ uint8_t readFreq (unsigned long address) {
 
 uint8_t readDuty (unsigned long address) {
   unsigned long* memAddr = NULL;
-  u_int8_t value = 0;
+  uint8_t value = 0;
 
   memAddr = io_p2v(address);
   printk(KERN_INFO "PWM: Decimal value of memAddress is: %lu", *memAddr);
