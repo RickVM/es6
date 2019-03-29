@@ -1,3 +1,6 @@
+// J3 PWM2 5de van rechtsboven
+// J! PWM! 8ste van rechst
+
 #include <linux/device.h> 
 #include <linux/fs.h>
 #include <linux/init.h>
@@ -128,11 +131,13 @@ uint8_t readEnable (unsigned long address) {
 uint8_t readFreq (unsigned long address) {
   unsigned long* memAddr = NULL;
   uint8_t value = 0;
+  uint32_t temp = 0;
 
   memAddr = io_p2v(address);
   printk(KERN_INFO "PWM: Decimal value of memAddress is: %lu", *memAddr);
 
-  value = memAddr >> PWM_FREQ_OFFSET;
+  temp = *memAddr >> PWM_FREQ_OFFSET;
+  value = (uint8_t)temp;
   printk(KERN_INFO "PWM: Freq value is %d", value);
 
   return value;
@@ -268,11 +273,13 @@ static ssize_t dev_write(struct file *filep, const char *buffer, size_t len, lof
       }
       break;
     case pwm1_duty:
-      // TODO Be able to enter a duty cycle of 100 % instead of 255
-      // if (value > 100) {
-      //   printk(KERN_INFO "PWM: Duty, incorrect input. Should be between 0 and 100 procent.");
-      //   return -1; // TODO Return correct error
-      // }
+      if (value > 100) {
+        printk(KERN_INFO "PWM: Duty, incorrect input. Should be between 0 and 100 procent.");
+        return -1; // TODO Return correct error
+      }
+
+      value = value * 255 / 100;
+
       if (writeDuty(PWM1_CTRL, value)) {
         // TODO Check return value
       }
@@ -288,6 +295,13 @@ static ssize_t dev_write(struct file *filep, const char *buffer, size_t len, lof
       }
       break;
     case pwm2_duty:
+      if (value > 100) {
+        printk(KERN_INFO "PWM: Duty, incorrect input. Should be between 0 and 100 procent.");
+        return -1; // TODO Return correct error
+      }
+
+      value = value * 255 / 100;
+
       if (writeDuty(PWM2_CTRL, value)) {
         // TODO Check return value
       }
