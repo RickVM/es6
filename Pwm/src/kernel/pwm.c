@@ -119,7 +119,7 @@ uint8_t readEnable (unsigned long address) {
   memAddr = io_p2v(address);
   printk(KERN_INFO "PWM: Decimal value of memAddress is: %lu", *memAddr);
   
-  value = *memAddr & (1 << PWM_ENABLE_BIT);
+  value = (*memAddr & (1 << PWM_ENABLE_BIT)) >> PWM_ENABLE_BIT;
   printk(KERN_INFO "PWM: Enable value is %d", value);
 
   return value; 
