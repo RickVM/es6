@@ -110,7 +110,16 @@ static int dev_release(struct inode *inodep, struct file *filep) {
 // ---- READ METHODES ----
 
 uint8_t readEnable (unsigned long adress) {
-  return 0; 
+  unsigned long* memAddr = NULL;
+  uint8_t value = 0;
+
+  memAddr = io_p2v(adress);
+  printk(KERN_INFO "PWM: Decimal value of memAddress is: %lu", *memAddr);
+  
+  value = *memAddr & (1 << PWM_ENABLE_BIT);
+  printk(KERN_INFO "PWM: Enable value is %d", value);
+
+  return value; 
 }
 
 uint8_t readFreq (unsigned long adress) {
@@ -122,10 +131,9 @@ uint8_t readDuty (unsigned long adress) {
 }
 
 static ssize_t dev_read(struct file *filep, char *buffer, size_t len, loff_t *offset) {
-  // int error_count = 0;
+  int error_count = 0;
   uint8_t value = 0;
   printk(KERN_INFO "PWM: Device has been read for minor num: %i", minor_num);
-  // TODO buffer check  
   switch (minor_num) {
     case pwm1_enable:
       value = readEnable(PWM1_CTRL);
@@ -146,9 +154,8 @@ static ssize_t dev_read(struct file *filep, char *buffer, size_t len, loff_t *of
       value = readDuty(PWM2_CTRL);
       break;
   }
-  // TODO Copy result back to user space
-  // error_count = copy_to_user(buffer, value, size_of_message);
-  return 0 /*error_count*/;
+  error_count = copy_to_user(buffer, &value, sizeof value);
+  return error_count;
 }
 
 // ---- WRITE METHODES ----
