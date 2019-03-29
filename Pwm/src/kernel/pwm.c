@@ -139,20 +139,24 @@ uint8_t readEnable (unsigned long address) {
   return value; 
 }
 
-uint8_t readFreq (unsigned long address) {
+uint32_t readFreq (unsigned long address) {
   unsigned long* memAddr = NULL;
-  uint8_t value = 0;
+  uint8_t reloadv = 0;
   uint32_t temp = 0;
 
   memAddr = io_p2v(address);
   printk(KERN_INFO "PWM: Decimal value of memAddress is: %lu", *memAddr);
 
   temp = *memAddr >> PWM_FREQ_OFFSET;
-  printk(KERN_INFO "PWM: Freq temp is %d", temp);
-  value = (uint8_t)temp;
-  printk(KERN_INFO "PWM: Freq value is %d", value);
+  printk(KERN_INFO "PWM: Mem adress value is %d", temp);
+  
+  reloadv = (uint8_t)temp;
+  printk(KERN_INFO "PWM: PWM_RELOADV value is %d", reloadv);
 
-  return value;
+  temp = (PWM_CLOCK_FREQUENCY / reloadv) / 256;
+  printk(KERN_INFO "PWM: Frequency is %u", temp);
+
+  return temp;
 }
 
 uint8_t readDuty (unsigned long address) {
@@ -222,16 +226,18 @@ int writeEnable(unsigned long address, uint8_t value) {
 }
 
 // Write to bits 15:8 for changing the output frequency
-int writeFreq(unsigned long address, uint8_t value) {
+int writeFreq(unsigned long address, uint32_t value) {
   unsigned long* memAddr = 0;
+  uint8_t reloadv = 0;
 
-  if (value < 198 && value > 50000){
+  if (value < 199 && value > 50000){
     printk(KERN_INFO "PWM: Frequency, incorrect input. Should be between 198 and 50000 hz.");
   }
 
-  // TODO Calculate frequency
-
-  printk(KERN_INFO "PWM: Freq, writing a freq of %d", value);
+  reloadv = PWM_CLOCK_FREQUENCY / (value * 256);
+  
+  printk(KERN_INFO "PWM: Freq write, freq %d", value);
+  printk(KERN_INFO "PWM: Freq write, reloadv value: %d", reloadv);
 
   memAddr = io_p2v(address);
   *memAddr = (*memAddr & PWM_FREQ) | (value << PWM_FREQ_OFFSET);
@@ -280,34 +286,22 @@ static ssize_t dev_write(struct file *filep, const char *buffer, size_t len, lof
 
   switch (minor_num) {
     case pwm1_enable:
-      if (writeEnable(PWM1_CTRL ,(uint8_t)res)) {
-        // TODO Check return value
-      }
+      retv = writeEnable(PWM1_CTRL ,(uint8_t)res);
       break;
     case pwm1_freq:
-      if (writeFreq(PWM1_CTRL, (uint32_t)res)) {
-          // TODO Check return value
-      }
+      retv = writeFreq(PWM1_CTRL, (uint32_t)res);
       break;
     case pwm1_duty:
-      if (writeDuty(PWM1_CTRL, (uint8_t)res)) {
-        // TODO Check return value
-      }
+      retv = writeDuty(PWM1_CTRL, (uint8_t)res); 
       break;
     case pwm2_enable:
-      if (writeEnable(PWM2_CTRL ,(uint8_t)res)) {
-        // TODO Check return value
-      }
+      retv = writeEnable(PWM2_CTRL ,(uint8_t)res); 
       break;
     case pwm2_freq:
-      if (writeFreq(PWM2_CTRL, (uint32_t)res)) {
-        // TODO Check return value
-      }
+      retv = writeFreq(PWM2_CTRL, (uint32_t)res);
       break;
     case pwm2_duty:
-      if (writeDuty(PWM2_CTRL, (uint8_t)res)) {
-        // TODO Check return value
-      }
+      retv = writeDuty(PWM2_CTRL, (uint8_t)res);
       break;
   }
   return len;
