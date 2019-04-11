@@ -110,6 +110,7 @@ static int dev_release(struct inode *inodep, struct file *filep) {
 
 static ssize_t dev_read(struct file *filep, char *buffer, size_t len, loff_t *offset) {
   int error_count = 0;
+  uint8_t retv = -1;
   int i = 0;
   unsigned long* memAddr = 0;
   const char* joystickMapping[5] = {"Click", "Left", "Up", "Right", "Down"};
@@ -125,11 +126,13 @@ static ssize_t dev_read(struct file *filep, char *buffer, size_t len, loff_t *of
       for (i = 0; i < 5; i++) {
         if ((*memAddr & (1 << i)) == 0) {
           printk("JOYSTICK: %s!\n", joystickMapping[i]);
+          retv = i;
         }
       }
 
       break;
   }
+  error_count = copy_to_user(buffer, &retv, sizeof retv);
   return error_count;
 }
 
