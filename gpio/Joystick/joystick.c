@@ -10,7 +10,8 @@
 #define DEVICE_NAME "joystick"
 #define CLASS_NAME "es6"
 
-#define read_joystick 1
+#define joystick_enable 101
+#define joystick_read 102
 
 #define P2_MUX_SET 0x40028028
 #define P2_DIR_CLR 0x40028014
@@ -95,9 +96,8 @@ static void __exit joystick_clean(void) {
 static int dev_open(struct inode *inodep, struct file *filep) {
   numberOpens++;
   printk(KERN_INFO "JOYSTICK: Device has been opened %d time(s)\n", numberOpens);
-  // Todo: Use file to set private data field with minor num.
   minor_num = MINOR(inodep->i_rdev);
-  printk(KERN_INFO "JOYSTICK: Opened for minor num: %i", minor_num);
+  printk(KERN_INFO "JOYSTICK: Opened for minor num: %i\n", minor_num);
   return 0;
 }
 
@@ -110,15 +110,23 @@ static int dev_release(struct inode *inodep, struct file *filep) {
 
 static ssize_t dev_read(struct file *filep, char *buffer, size_t len, loff_t *offset) {
   int error_count = 0;
+  int i = 0;
   unsigned long* memAddr = 0;
-  
-  printk(KERN_INFO "JOYSTICK: Device has been read for minor num: %i\n", minor_num);
+  const char* joystickMapping[5] = {"Click", "Left", "Up", "Right", "Down"};
+
   switch (minor_num) {
-    case read_joystick:
-      // Read joystick
+    case joystick_read:
+      
       memAddr = io_p2v(P2_INP_STATE);
 
       printk("JOYSTICK: Value of register is: %lu\n", *memAddr);
+
+      // Switch is a normal closed, so if it is zero we have an input
+      for (i = 0; i < 5; i++) {
+        if ((*memAddr & (1 << i)) == 0) {
+          printk("JOYSTICK: %s!\n", joystickMapping[i]);
+        }
+      }
 
       break;
   }
@@ -126,14 +134,10 @@ static ssize_t dev_read(struct file *filep, char *buffer, size_t len, loff_t *of
 }
 
 static ssize_t dev_write(struct file *filep, const char *buffer, size_t len, loff_t *offset) {
-  int retv = 0;
   unsigned long* memAddr = 0;
 
-  printk(KERN_INFO "JOYSTICK: Device has been written to for minor num: %i", minor_num);
-
   switch (minor_num) {
-    case read_joystick:
-      // Enable joystick
+    case joystick_enable:
       memAddr = io_p2v(P2_MUX_SET);
       *memAddr |= ( 1 << 3);
 
@@ -142,6 +146,9 @@ static ssize_t dev_write(struct file *filep, const char *buffer, size_t len, lof
 
       printk(KERN_INFO "JOYSTICK: Enabled joystick!\n");
 
+      break;
+    default: 
+      printk(KERN_INFO "JOYSTICK: Nothing to be writen to minor number!\n");
       break;
   }
   return len;
