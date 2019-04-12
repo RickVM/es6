@@ -39,6 +39,12 @@ struct Pin {
 struct Pinctrl {
     Registers registers;
     unsigned int npins;
+    Pin pins[];
+    Get_direction get_direction;
+    Set_dir set_dir;
+    Get_value get_value;
+    Set_value set_value;
+    Init init;
 };
 
 #endif /* PINCTRL_H */
