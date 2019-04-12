@@ -1,23 +1,23 @@
 #ifndef PINCTRL_H
 #define PINCTRL_H
 
+#define PINS_PER_CONNECTOR 65
+
 struct Pinctrl;
 struct Pin;
 struct Registers;
 
-enum CONF;
+typedef enum {
+    disabled = 0,
+    output = 1,
+    input = 2
+} CONF;
 
-typedef CONF (*Get_direction)(Registers registers, int index);
-typedef void (*Set_dir)(Registers registers, int index);
+typedef CONF (*Get_direction)(struct Registers* registers, int index);
+typedef void (*Set_direction)(struct Registers* registers, int index);
 typedef int (*Get_value)(unsigned long reg, int index);
-typedef void (*Set_value)(Registers reg, int index);
-typedef int (*Init)();
-
-enum CONF {
-    disabled,
-    output,
-    input
-};
+typedef void (*Set_value)(struct Registers* reg, int index);
+typedef int (*Init)(void);
 
 struct Registers {
     unsigned long INP_STATE; // Read state of input pins 
@@ -33,12 +33,18 @@ struct Pin {
     const char* connector;
     unsigned int pin;
     unsigned int index;
-    Pinctrl pinctrl; // refrence to parent
+    struct Pinctrl *pinctrl; // pointer to parent
 };
 
 struct Pinctrl {
-    Registers registers;
+    struct Registers registers;
     unsigned int npins;
+    struct Pin pins[PINS_PER_CONNECTOR];
+    Get_direction get_direction;
+    Set_direction set_direction;
+    Get_value get_value;
+    Set_value set_value;
+    Init init;
 };
 
 #endif /* PINCTRL_H */
