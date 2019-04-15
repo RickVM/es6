@@ -13,10 +13,10 @@ typedef enum {
     input = 2
 } CONF;
 
-typedef CONF (*Get_direction)(struct Registers* registers, int index);
-typedef void (*Set_direction)(struct Registers* registers, int index);
-typedef int (*Get_value)(unsigned long reg, int index);
-typedef void (*Set_value)(struct Registers* reg, int index);
+typedef CONF (*Get_direction)(struct Pin* pin);
+typedef int (*Set_direction)(struct Pin* pin, const char direction);
+typedef int (*Get_value)(struct Pin* pin);
+typedef int (*Set_value)(struct Pin* pin, int value);
 typedef int (*Init)(void);
 
 struct Registers {
