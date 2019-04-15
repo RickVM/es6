@@ -57,13 +57,16 @@ char conf_to_char(CONF direction) {
 CONF getDirection(struct Pin* pin) {
     unsigned long* memAddr = 0;
     CONF conf = disabled;
-    uint8_t dir = -1;
+    uint32_t dir = -1;
     printk(KERN_INFO "Connector: %s Pin: %d Index: %d\n", pin->connector, pin->pin, pin->index);
 
     // See if Pin is configured as input or output
     memAddr = io_p2v(pin->pinctrl->registers.DIR_STATE);
-    dir = (*memAddr & ( 1UL << pin->index ));
-    conf = (CONF) dir;
+    dir = *memAddr & ( 1UL << pin->index );
+
+    printk(KERN_INFO "Dir value: %d\n", dir);
+
+    conf = (CONF) dir >> pin->index;
 
     printk(KERN_INFO "Value register %lu", *memAddr);
 
@@ -100,7 +103,7 @@ int setDirection(struct Pin* pin, const char direction) {
 }
 
 int getValue(struct Pin* pin) {
-    uint8_t value = 0;
+    uint32_t value = 0;
     unsigned long* memAddr = 0;
 
     CONF dir = getDirection(pin);
@@ -120,7 +123,7 @@ int getValue(struct Pin* pin) {
             value = -1;
             break;
     }
-    return value;
+    return value >> pin->index;
 }
 
 int setValue(struct Pin* pin, int value) {

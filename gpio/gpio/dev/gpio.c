@@ -9,7 +9,7 @@
 
 #include "../pinctrl_lpc3250.h"
 
-#define DEVICE_NAME "gpio"
+#define DEVICE_NAME "gpio_dev"
 #define CLASS_NAME "es6"
 
 #define gpio_set 101
@@ -114,7 +114,7 @@ static ssize_t dev_read(struct file *filep, char *buffer, size_t len, loff_t *of
       break;
     
     case gpio_read: // Read the pin that was set in write
-        
+
         break;
   }
   error_count = copy_to_user(buffer, &retv, sizeof retv);
@@ -126,7 +126,7 @@ static ssize_t dev_write(struct file *filep, const char *buffer, size_t len, lof
 
   switch (minor_num) {
     case gpio_set: // Set pin to high or low
-
+        
       break;
 
     case gpio_read: // Set the data of wich pin to read
