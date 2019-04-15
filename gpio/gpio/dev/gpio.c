@@ -15,6 +15,8 @@
 #define gpio_set 101
 #define gpio_read 102
 
+struct Pin* pinToRead = NULL;
+
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Rick van Melis & Simon Lit");
 MODULE_DESCRIPTION("Module for reading and writing to GPIO's on the LPC3250");
@@ -85,8 +87,6 @@ static void __exit gpio_exit(void) {
   printk(KERN_INFO "GPIO: Goodby from the LKM!\n");
 }
 
-// ---- OPEN & RELEASE ----
-
 static int dev_open(struct inode *inodep, struct file *filep) {
   numberOpens++;
   printk(KERN_INFO "GPIO: Device has been opened %d time(s)\n", numberOpens);
@@ -100,8 +100,6 @@ static int dev_release(struct inode *inodep, struct file *filep) {
   return 0;
 }
 
-// ---- READ METHODES ----
-
 static ssize_t dev_read(struct file *filep, char *buffer, size_t len, loff_t *offset) {
   int error_count = 0;
   uint8_t retv = -1;
@@ -114,7 +112,13 @@ static ssize_t dev_read(struct file *filep, char *buffer, size_t len, loff_t *of
       break;
     
     case gpio_read: // Read the pin that was set in write
-
+        if (pinToRead != NULL) {
+            printk(KERN_INFO "GPIO: Reading pin %d of connector %s!\n", pinToRead->pin, pinToRead->connector);
+            retv = pinToRead->pinctrl->get_value(pinToRead);
+            printk(KERN_INFO "GPIO: Value of pin %d of connector %s is %d!\n", pinToRead->pin, pinToRead->connector, retv);
+        } else {
+            printk(KERN_WARNING "GPIO: No pin to read from has been selected!\n");
+        }
         break;
   }
   error_count = copy_to_user(buffer, &retv, sizeof retv);
@@ -123,15 +127,31 @@ static ssize_t dev_read(struct file *filep, char *buffer, size_t len, loff_t *of
 
 static ssize_t dev_write(struct file *filep, const char *buffer, size_t len, loff_t *offset) {
   unsigned long* memAddr = 0;
+  char connector[3];
+  int pinNr = 0;
+  int value = 0;
+  int result = 0;
 
   switch (minor_num) {
     case gpio_set: // Set pin to high or low
-        
-      break;
-
+        result = sscanf(buffer, "%s %d %d", connector, &pinNr, &value);
+        if (result == 3) {
+            struct Pin* pin = (struct Pin*) searchPin(connector, pinNr);
+            if (pin != NULL) {
+                pin->pinctrl->set_value(pin, value);
+            }
+        } else {
+            printk(KERN_WARNING "Input did not match expected format! Expecting CONNECTOR PINNUMBER VALUE!\n");
+        }
+        break;
     case gpio_read: // Set the data of wich pin to read
-
-      break;
+        result = sscanf(buffer, "%s %d", connector, &pinNr);
+        if (result == 2) {
+            pinToRead = (struct Pin*) searchPin(connector, pinNr);
+        } else {
+            printk(KERN_WARNING "Input did not match expected format! Expecting CONNECTOR PINNUMBER!\n");
+        }
+        break;
 
     default: 
       printk(KERN_INFO "GPIO: Nothing to be writen to minor number!\n");

@@ -1,10 +1,11 @@
 ARCH=arm
 GCC=/usr/local/xtools/arm-unknown-linux-uclibcgnueabi/bin/arm-linux-
-obj-m := dev/gpio.o sys/gpio_sys.o
-mymodule-objs := pinctrl_lpc3250.o
 KDIR := ~/felabs/sysdev/tinysystem/linux-2.6.34/
-DIR= src/user/
-TARGET := user-gpio
+
+obj-m := gpio-dev.o gpio-sys.o
+
+gpio-dev-objs := dev/gpio.o pinctrl_lpc3250.o
+gpio-sys-objs := sys/gpio.o pinctrl_lpc3250.o
 
 default: kernel
 
@@ -17,9 +18,5 @@ kernel:
 	rm sys/.gpio_sys**
 	rm sys/*.mod.c
 
-$(TARGET):
-	$(GCC)gcc $(DIR)$(TARGET).c -o $(DIR)$(TARGET)
-
 clean:
 	$(MAKE) -C $(KDIR) M=$(PWD) clean
-	rm $(DIR)/$(TARGET)
