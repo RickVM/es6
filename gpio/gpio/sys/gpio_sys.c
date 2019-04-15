@@ -5,6 +5,8 @@
 #include <mach/hardware.h>
 #include <linux/errno.h>
 
+#include "../pinctrl_lpc3250.h"
+
 #define sysfs_dir "gpio"
 #define sysfs_max_data_size 1024
 
@@ -37,25 +39,37 @@ static ssize_t config_write(struct device *dev, struct device_attribute *attr,
           const char *buffer, size_t count)
 {
   char connector[3];
-  char direction[3];
-  int pin;
+  char direction;
+  int pinNr;
   int result;
   int used_buffer_size;
+  Pin pin; 
 
   // get connector, pin & direction from data. Save in global. (if not found, return error!)
-  result = sscanf(buffer, "%s %d %s", connector , &pin, direction);
+  result = sscanf(buffer, "%s %d %c", connector , &pinNr, &direction);
   if(result ==  3) { // OR result == 2? Only set connector+pin.
-    printk(KERN_INFO "Connector: %s Pin: %d Direction: %s\n", connector, pin, direction);
-    // Search Pin & connector in pinctrl
-    // check if initialized
-    // [no] -> initialize
-    // Set direction
+    printk(KERN_INFO "Connector: %s Pin: %d Direction: %c\n", connector, pinNr, direction);
+    pin = searchPin(connector, pinNr);
+    if(pin) { 
+      // check if initialized
+      // [no] -> initialize
+      if(pin->pinctrl->init() !== 0) {
+        printk(KERN_WARNING "Could not initialize Connector: %s Pin: %d 
+              perhaps it is used by another device?", connector, pinNr,)
+      } // TODO: IMPLEMENT NULL CHECK OR MAKE SURE INIT IS ALWAYS LINKED
+      
+      if(pin->pinctrl->set_direction(pin, direction) !== 0) {
+        printk(KERN_WARNING "Could not set pin direction for
+             Connector: %s Pin: %d Direction: %c\n", connector, pinNr, direction)
+      }
+    }
+    else {
+      printk(KERN_WARNING "Could not find pin for Connector: %s Pin: %d");
+    }
   }
   else {
     printk(KERN_WARNING "Input did not match expected format! connector pin direction e.g. j1 8 out\n");
-    result = 1;
   }
-
   used_buffer_size = count > sysfs_max_data_size ? sysfs_max_data_size : count;
   return used_buffer_size;
 }
