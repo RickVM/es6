@@ -6,14 +6,14 @@
 #include <linux/errno.h>
 
 #define sysfs_dir "gpio"
-#define sysfs_data "" // Maybe remove?
 #define sysfs_max_data_size 1024
 
 static char[] setPin;
 
-MODULE_LICENSE("Dual BSD/GPL");
+MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Melis & Lit");
 MODULE_DESCRIPTION("sysfs GPIO");
+MODULE_VERSION("1.0");
 
 static ssize_t config_read(struct device *dev, struct device_attribute *attr,
          char *buffer)
