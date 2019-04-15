@@ -10,31 +10,47 @@
 #define sysfs_dir "gpio"
 #define sysfs_max_data_size 1024
 
-static char setPin[10];
-
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Melis & Lit");
 MODULE_DESCRIPTION("sysfs GPIO");
 MODULE_VERSION("1.0");
 
+static struct Pin* activePin;
+
+char conf_to_char(CONF direction) {
+  char dir;
+  switch(direction) {
+    case output:
+      dir = 'O';
+      break;
+    case input:
+      dir = 'I';
+      break;
+    case disabled:
+      dir = 'D';
+      break;
+    default:
+      dir = 'E';
+      printk(KERN_ERR "No matching direction for %d", direction);
+      break;
+  };
+  return dir;
+}
+
 static ssize_t config_read(struct device *dev, struct device_attribute *attr,
          char *buffer)
 {
-  printk(KERN_INFO "sysfile_read (/sys/kernel/%s/%s) called\n", sysfs_dir,
-         attr->attr.name);
-  // Use set pin to return state
-  if(setPin != NULL) {
-    printk(setPin);
+  CONF direction;
+  if(activePin == NULL) {
+    printk(KERN_WARNING "Read operation called without a set Connector + pin."
+             "Set a pin and try again.\n");
+    return -ENXIO;
   }
-  else {
-    printk("Read operation called without a set Connector + pin. Set a pin and try again.\n");
-  }
-
- 
-  return snprintf(buffer, sysfs_max_data_size, "Jaja\n"); //RETURN SIZE OF BUFFER!!!!
+  direction = activePin->pinctrl->get_direction(activePin);
+  return snprintf(buffer, sysfs_max_data_size, "%s %d %c", 
+                    activePin->connector, activePin->index, conf_to_char(direction));
 }
 
-// Writing does not use registerCount to enable variable size writing,
 static ssize_t config_write(struct device *dev, struct device_attribute *attr,
           const char *buffer, size_t count)
 {
@@ -43,32 +59,30 @@ static ssize_t config_write(struct device *dev, struct device_attribute *attr,
   int pinNr;
   int result;
   int used_buffer_size;
-  Pin pin; 
 
   // get connector, pin & direction from data. Save in global. (if not found, return error!)
   result = sscanf(buffer, "%s %d %c", connector , &pinNr, &direction);
   if(result ==  3) { // OR result == 2? Only set connector+pin.
     printk(KERN_INFO "Connector: %s Pin: %d Direction: %c\n", connector, pinNr, direction);
-    pin = searchPin(connector, pinNr);
-    if(pin) { 
+    activePin = searchPin(connector, pinNr);
+    if(activePin != NULL) { 
       // check if initialized
       // [no] -> initialize
-      if(pin->pinctrl->init() !== 0) {
-        printk(KERN_WARNING "Could not initialize Connector: %s Pin: %d 
-              perhaps it is used by another device?", connector, pinNr,)
+      if(activePin->pinctrl->init() != 0) {
+        printk(KERN_WARNING "Could not initialize Connector: %s Pin: %d" 
+              "perhaps it is used by another device?", connector, pinNr);
       } // TODO: IMPLEMENT NULL CHECK OR MAKE SURE INIT IS ALWAYS LINKED
-      
-      if(pin->pinctrl->set_direction(pin, direction) !== 0) {
-        printk(KERN_WARNING "Could not set pin direction for
-             Connector: %s Pin: %d Direction: %c\n", connector, pinNr, direction)
+      if(activePin->pinctrl->set_direction(activePin, direction) != 0) {
+        printk(KERN_WARNING "Could not set pin direction for "
+             "Connector: %s Pin: %d Direction: %c\n", connector, pinNr, direction);
       }
     }
     else {
-      printk(KERN_WARNING "Could not find pin for Connector: %s Pin: %d");
+      printk(KERN_WARNING "Could not find match for Connector: %s Pin: %d", connector, pinNr);
     }
   }
   else {
-    printk(KERN_WARNING "Input did not match expected format! connector pin direction e.g. j1 8 out\n");
+    printk(KERN_WARNING "Input did not match expected format! connector pin direction e.g. J1 8 out\n");
   }
   used_buffer_size = count > sysfs_max_data_size ? sysfs_max_data_size : count;
   return used_buffer_size;
