@@ -23,9 +23,9 @@ const struct Pin* searchPin(const char* connector, int nummer) {
     uint8_t k = 0;
     uint8_t i = 0;
 
-    for (k=0; k< sizeof(pinctrls)/sizeof(struct Pinctrl); k++) {
+    for (k=0; k< 2; k++) {
         for (i=0; i<pinctrls[k]->npins; i++) {
-            if (pinctrls[k]->pins[i].connector == connector && pinctrls[k]->pins[i].pin == nummer) {
+            if (strcmp(pinctrls[k]->pins[i].connector, connector) == 0 && pinctrls[k]->pins[i].pin == nummer) {
                return &pinctrls[k]->pins[i];
             } 
         }
@@ -38,29 +38,39 @@ CONF getDirection(struct Pin* pin) {
     unsigned long* memAddr = 0;
     CONF conf = disabled;
     uint8_t dir = -1;
+    printk(KERN_INFO "Connector: %s Pin: %d Index: %d\n", pin->connector, pin->pin, pin->index);
 
     // See if Pin is configured as input or output
     memAddr = io_p2v(pin->pinctrl->registers.DIR_STATE);
-    dir = *memAddr & ( 1UL << pin->index );
+    dir = (*memAddr & ( 1UL << pin->index ));
     conf = (CONF) dir;
 
+    printk(KERN_INFO "Value register %lu", *memAddr);
+
+
+    printk(KERN_INFO "Returning direction: %d\n", conf);
     return conf;
 }
 
 int setDirection(struct Pin* pin, const char direction) {
     int retv = 0;
     unsigned long* memAddr = 0;
+    printk(KERN_INFO "Setting direction for: Connector: %s Pin: %d Direction: %c\n", pin->connector, pin->pin, direction);
 
     switch (direction) {
         case 'O':
         case 'o':
             memAddr = io_p2v(pin->pinctrl->registers.DIR_SET);
+            printk(KERN_INFO "Setting register to OUTPUT value: %lu", *memAddr);
             *memAddr |= ( 1UL << pin->index );
+            printk(KERN_INFO "Setting register to OUTPUT value: %lu", *memAddr);
             break;
         case 'I':
         case 'i':
             memAddr = io_p2v(pin->pinctrl->registers.DIR_CLR);
+            printk(KERN_INFO "Setting register to INPUT value: %lu", *memAddr);
             *memAddr |= ( 1UL << pin->index );
+            printk(KERN_INFO "Setting register to INPUT value: %lu", *memAddr);
             break;
         default:
             retv = -1;
@@ -118,6 +128,7 @@ int setValue(struct Pin* pin, int value) {
 
 int setMux(void) {
     unsigned long* memAddr = 0;
+    printk(KERN_INFO "Setting Mux");
     memAddr = io_p2v(P2_MUX_SET);
     *memAddr |= (1UL << EMC_D_SEL);
     return 0;

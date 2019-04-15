@@ -31,7 +31,7 @@ char conf_to_char(CONF direction) {
       break;
     default:
       dir = 'E';
-      printk(KERN_ERR "No matching direction for %d", direction);
+      printk(KERN_ERR "No matching direction for %d\n", direction);
       break;
   };
   return dir;
@@ -48,7 +48,7 @@ static ssize_t config_read(struct device *dev, struct device_attribute *attr,
   }
   direction = activePin->pinctrl->get_direction(activePin);
   return snprintf(buffer, sysfs_max_data_size, "%s %d %c", 
-                    activePin->connector, activePin->index, conf_to_char(direction));
+                    activePin->connector, activePin->pin, conf_to_char(direction));
 }
 
 static ssize_t config_write(struct device *dev, struct device_attribute *attr,
@@ -63,19 +63,21 @@ static ssize_t config_write(struct device *dev, struct device_attribute *attr,
   // get connector, pin & direction from data. Save in global. (if not found, return error!)
   result = sscanf(buffer, "%s %d %c", connector , &pinNr, &direction);
   if(result ==  3) { // OR result == 2? Only set connector+pin.
-    printk(KERN_INFO "Connector: %s Pin: %d Direction: %c\n", connector, pinNr, direction);
-    activePin = searchPin(connector, pinNr);
+    printk(KERN_INFO "Received cmd: Connector: %s Pin: %d Direction: %c\n", connector, pinNr, direction);
+    activePin = (struct Pin*)searchPin(connector, pinNr);
     if(activePin != NULL) { 
       // check if initialized
       // [no] -> initialize
-      if(activePin->pinctrl->init() != 0) {
-        printk(KERN_WARNING "Could not initialize Connector: %s Pin: %d" 
-              "perhaps it is used by another device?", connector, pinNr);
-      } // TODO: IMPLEMENT NULL CHECK OR MAKE SURE INIT IS ALWAYS LINKED
-      if(activePin->pinctrl->set_direction(activePin, direction) != 0) {
-        printk(KERN_WARNING "Could not set pin direction for "
-             "Connector: %s Pin: %d Direction: %c\n", connector, pinNr, direction);
-      }
+      // TODO: IMPLEMENT NULL CHECK OR MAKE SURE INIT IS ALWAYS LINKED
+      if(activePin->pinctrl->init() == 0) {
+        if(activePin->pinctrl->set_direction(activePin, direction) != 0) {
+          printk(KERN_WARNING "Could not set pin direction for "
+              "Connector: %s Pin: %d Direction: %c\n", connector, pinNr, direction);
+        } 
+      } else {
+          printk(KERN_WARNING "Could not initialize Connector: %s Pin: %d" 
+                  "perhaps it is used by another device?", connector, pinNr);
+        }
     }
     else {
       printk(KERN_WARNING "Could not find match for Connector: %s Pin: %d", connector, pinNr);
