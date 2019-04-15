@@ -8,9 +8,9 @@ struct Pin;
 struct Registers;
 
 typedef enum {
-    disabled = 0,
-    output = 1,
-    input = 2
+    disabled = -1,
+    input = 0,
+    output = 1
 } CONF;
 
 typedef CONF (*Get_direction)(struct Pin* pin);
