@@ -17,26 +17,6 @@ MODULE_VERSION("1.0");
 
 static struct Pin* activePin;
 
-char conf_to_char(CONF direction) {
-  char dir;
-  switch(direction) {
-    case output:
-      dir = 'O';
-      break;
-    case input:
-      dir = 'I';
-      break;
-    case disabled:
-      dir = 'D';
-      break;
-    default:
-      dir = 'E';
-      printk(KERN_ERR "No matching direction for %d\n", direction);
-      break;
-  };
-  return dir;
-}
-
 static ssize_t config_read(struct device *dev, struct device_attribute *attr,
          char *buffer)
 {
@@ -84,7 +64,7 @@ static ssize_t config_write(struct device *dev, struct device_attribute *attr,
     }
   }
   else {
-    printk(KERN_WARNING "Input did not match expected format! connector pin direction e.g. J1 8 out\n");
+    printk(KERN_WARNING "Input did not match expected format! Usage: connector pin direction e.g. J1 8 O\n");
   }
   used_buffer_size = count > sysfs_max_data_size ? sysfs_max_data_size : count;
   return used_buffer_size;

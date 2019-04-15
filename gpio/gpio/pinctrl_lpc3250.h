@@ -34,6 +34,26 @@ const struct Pin* searchPin(const char* connector, int nummer) {
     return NULL;
 }
 
+char conf_to_char(CONF direction) {
+  char dir;
+  switch(direction) {
+    case output:
+      dir = 'O';
+      break;
+    case input:
+      dir = 'I';
+      break;
+    case disabled:
+      dir = 'D';
+      break;
+    default:
+      dir = 'E';
+      printk(KERN_ERR "No matching direction for %d\n", direction);
+      break;
+  };
+  return dir;
+}
+
 CONF getDirection(struct Pin* pin) {
     unsigned long* memAddr = 0;
     CONF conf = disabled;
