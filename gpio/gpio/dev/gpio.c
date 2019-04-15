@@ -55,8 +55,7 @@ static int __init gpio_init(void) {
   // Register the device class
   gpioClass = class_create(THIS_MODULE, CLASS_NAME);
   
-  if (IS_ERR(gpioDevice
-)) { // Check for error, cleanup if there is
+  if (IS_ERR(gpioDevice)) { // Check for error, cleanup if there is
     unregister_chrdev(majorNumber, DEVICE_NAME);
     printk(KERN_ALERT "GPIO: failed to register device class\n");
     return PTR_ERR(gpioClass); // Correct way to return an error on a pointer
@@ -64,20 +63,17 @@ static int __init gpio_init(void) {
   
   printk(KERN_INFO "GPIO: device class registered correctly\n");
 
-  gpioDevice
- = device_create(gpioClass, NULL, MKDEV(majorNumber, 0), NULL, DEVICE_NAME);
+  gpioDevice = device_create(gpioClass, NULL, MKDEV(majorNumber, 0), NULL, DEVICE_NAME);
   
-  if (IS_ERR(gpioDevice
-)) {
+  if (IS_ERR(gpioDevice)) {
     class_destroy(gpioClass);
     unregister_chrdev(majorNumber, DEVICE_NAME);
     printk(KERN_ALERT "GPIO: failed to create the device\n");
-    return PTR_ERR(gpioDevice
-  );
+    return PTR_ERR(gpioDevice);
   }
   
   printk(KERN_INFO "GPIO: device class created correctly\n");
-
+  
   return 0;
 }
 
@@ -116,8 +112,9 @@ static ssize_t dev_read(struct file *filep, char *buffer, size_t len, loff_t *of
     
     memAddr = io_p2v(pinctrl_port2.registers.INP_STATE);
 
-    printk(KERN_INFO "GPIO: Memory adress is: %lu", pinctrl_port2.registers.INP_STATE);
-    printk(KERN_INFO "GPIO: Number of pins is: %d", pinctrl_port2.npins);
+    printk(KERN_INFO "GPIO: Memory adress is: %lu\n", pinctrl_port2.registers.INP_STATE);
+    printk(KERN_INFO "GPIO: Number of pins is: %d\n", pinctrl_port2.npins);
+    printk(KERN_INFO "GPIO: Return value through struct: %d\n", pinctrl_port2.get_value(0x40024008, 10));
 
     //   memAddr = io_p2v(P2_INP_STATE);
 
