@@ -9,6 +9,8 @@
 #define sysfs_data "" // Maybe remove?
 #define sysfs_max_data_size 1024
 
+static char[] setPin;
+
 MODULE_LICENSE("Dual BSD/GPL");
 MODULE_AUTHOR("Melis & Lit");
 MODULE_DESCRIPTION("sysfs GPIO");
@@ -18,15 +20,23 @@ static ssize_t config_read(struct device *dev, struct device_attribute *attr,
 {
   printk(KERN_INFO "sysfile_read (/sys/kernel/%s/%s) called\n", sysfs_dir,
          attr->attr.name);
-  // Use set pin to return direction
+  // Use set pin to return state
+  if(setPin !== NULL) {
+    
+  }
+  else {
+    printk("Read operation called without a set Connector + pin. Set a pin and try again.")
+  }
 
-  return 0; //ETURN SIZE OF BUFFER!!!!
+  return 0; //RETURN SIZE OF BUFFER!!!!
 }
 
 // Writing does not use registerCount to enable variable size writing,
 static ssize_t config_write(struct device *dev, struct device_attribute *attr,
           const char *buffer, size_t count)
 {
+  
+
   char connector[3];
   char direction[3];
   int pin;
@@ -37,17 +47,20 @@ static ssize_t config_write(struct device *dev, struct device_attribute *attr,
 
   // get connector, pin & direction from data. Save in global. (if not found, return error!)
   result = sscanf(buffer, "%s %d %s", connector , &pin, direction);
-  if(result !=   3) {
-    printk(KERN_WARNING "Input did not match expected format! connector pin direction e.g. j1 8 out");
-    return -EINVAL;
+  if(result ==  3) { // OR result == 2? Only set connector+pin.
+    printk(KERN_INFO "Connector: %s Pin: %d Direction: %s", connector, pin, direction);
+    // Search Pin & connector in pinctrl
+    // check if initialized
+    // [no] -> initialize
+    // Set direction
   }
-  // Search Pin & connector in pinctrl
-  // check if initialized
-  // [no] -> initialize
-  // Set direction
-  printk(KERN_INFO "Connector: %s Pin: %d Direction: %s", connector, pin, direction);
-  
-  return 3; // TODO: RETURN SIZE OF READ BUFFER!!!!
+  else {
+    printk(KERN_WARNING "Input did not match expected format! connector pin direction e.g. j1 8 out");
+    result = 1;
+  }
+
+  used_buffer_size = count > sysfs_max_data_size ? sysfs_max_data_size : count
+  return used_buffer_size;
 }
 
 static DEVICE_ATTR(config, S_IWUGO | S_IRUGO, config_read, config_write);
