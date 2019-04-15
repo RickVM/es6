@@ -2,6 +2,7 @@
 #define PINCTRL_LPC3250_H_
 
 #include "pinctrl.h"
+#include <linux/mm.h> 
 
 #define number_pins_port0 8
 #define number_pins_port2 13
@@ -12,36 +13,107 @@
 #define LCD_CFG 0x40004054
 #define HCLK_ENABLE 5
 
-struct Pin* searchPin(const char* connector, int nummer) {
+struct Pinctrl pinctrl_port0;
+struct Pinctrl pinctrl_port2;
+struct Pinctrl pinctrl_port3;
+
+static const struct Pinctrl *pinctrls[2] = { &pinctrl_port0, &pinctrl_port2/*, &pinctrl_port3*/ };
+
+const struct Pin* searchPin(const char* connector, int nummer) {
+    uint8_t k = 0;
+    uint8_t i = 0;
+
+    for (k=0; k< sizeof(pinctrls)/sizeof(struct Pinctrl); k++) {
+        for (i=0; i<pinctrls[k]->npins; i++) {
+            if (pinctrls[k]->pins[i].connector == connector && pinctrls[k]->pins[i].pin == nummer) {
+               return &pinctrls[k]->pins[i];
+            } 
+        }
+    }
+
     return NULL;
 }
 
 CONF getDirection(struct Pin* pin) {
-    // Not implemented yet
+    unsigned long* memAddr = 0;
     CONF conf = disabled;
+    uint8_t dir = -1;
+
+    // See if Pin is configured as input or output
+    memAddr = io_p2v(pin->pinctrl->registers.DIR_STATE);
+    dir = *memAddr & ( 1UL << pin->index );
+    conf = (CONF) dir;
+
     return conf;
 }
 
 int setDirection(struct Pin* pin, const char direction) {
-    // Not implemented yet
+    int retv = 0;
+    unsigned long* memAddr = 0;
+
     switch (direction) {
         case 'O':
+        case 'o':
+            memAddr = io_p2v(pin->pinctrl->registers.DIR_SET);
+            *memAddr |= ( 1UL << pin->index );
             break;
         case 'I':
+        case 'i':
+            memAddr = io_p2v(pin->pinctrl->registers.DIR_CLR);
+            *memAddr |= ( 1UL << pin->index );
             break;
         default:
+            retv = -1;
             break;
     }
-    return 0;
+    return retv;
 }
 
 int getValue(struct Pin* pin) {
-    // Not implemented yet
-    return 1;
+    uint8_t value = 0;
+    unsigned long* memAddr = 0;
+
+    CONF dir = getDirection(pin);
+
+    switch ( dir )
+    {
+        case input: // Pin is configured as input
+            memAddr = io_p2v(pin->pinctrl->registers.INP_STATE);
+            value = *memAddr & ( 1UL << pin->index );
+            break;
+        case output: // Pin is configured as output
+            memAddr = io_p2v(pin->pinctrl->registers.OUTP_STATE);
+            value =  *memAddr & ( 1UL << pin->index );
+            break;
+
+        default:
+            value = -1;
+            break;
+    }
+    return value;
 }
 
 int setValue(struct Pin* pin, int value) {
-    // Not implemented yet
+    unsigned long* memAddr = 0;
+    uint8_t retv = 0;
+    
+    CONF dir = getDirection(pin);
+
+    switch (dir)
+    {
+        case input:
+            memAddr = io_p2v(pin->pinctrl->registers.OUTP_CLR);
+            *memAddr |= ( 1UL << pin->index );
+            break;
+        case output:
+            memAddr = io_p2v(pin->pinctrl->registers.OUTP_SET);
+            *memAddr |= ( 1UL << pin->index );
+            break;
+        default:
+            retv = -1;
+            break;
+    }
+    return retv;
 }
 
 int setMux(void) {

@@ -109,11 +109,12 @@ static ssize_t dev_read(struct file *filep, char *buffer, size_t len, loff_t *of
 
   switch (minor_num) {
     case gpio_set:
-    
+        // Nothing to do here
+        printk(KERN_INFO "GPIO: Nothing to read on device node gpio_set!");
       break;
     
-    case gpio_read: 
-
+    case gpio_read: // Read the pin that was set in write
+        
         break;
   }
   error_count = copy_to_user(buffer, &retv, sizeof retv);
@@ -124,11 +125,11 @@ static ssize_t dev_write(struct file *filep, const char *buffer, size_t len, lof
   unsigned long* memAddr = 0;
 
   switch (minor_num) {
-    case gpio_set:
-    
+    case gpio_set: // Set pin to high or low
+
       break;
 
-    case gpio_read:
+    case gpio_read: // Set the data of wich pin to read
 
       break;
 
