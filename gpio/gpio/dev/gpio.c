@@ -73,7 +73,7 @@ static int __init gpio_init(void) {
   }
   
   printk(KERN_INFO "GPIO: device class created correctly\n");
-  
+
   return 0;
 }
 
@@ -110,24 +110,6 @@ static ssize_t dev_read(struct file *filep, char *buffer, size_t len, loff_t *of
   switch (minor_num) {
     case gpio_set:
     
-    memAddr = io_p2v(pinctrl_port2.registers.INP_STATE);
-
-    printk(KERN_INFO "GPIO: Memory adress is: %lu\n", pinctrl_port2.registers.INP_STATE);
-    printk(KERN_INFO "GPIO: Number of pins is: %d\n", pinctrl_port2.npins);
-    printk(KERN_INFO "GPIO: Return value through struct: %d\n", pinctrl_port2.get_value(0x40024008, 10));
-
-    //   memAddr = io_p2v(P2_INP_STATE);
-
-    //   printk("GPIO: Value of register is: %lu\n", *memAddr);
-
-    //   // Switch is a normal closed, so if it is zero we have an input
-    //   for (i = 0; i < 5; i++) {
-    //     if ((*memAddr & (1 << i)) == 0) {
-    //       printk("GPIO: %s!\n", GPIOMapping[i]);
-    //       retv = i;
-    //     }
-    //   }
-
       break;
     
     case gpio_read: 
@@ -143,17 +125,7 @@ static ssize_t dev_write(struct file *filep, const char *buffer, size_t len, lof
 
   switch (minor_num) {
     case gpio_set:
-     
-
-    memAddr = io_p2v(pinctrl_port2.registers.INP_STATE);
-
-    //   memAddr = io_p2v(P2_MUX_SET);
-    //   *memAddr |= ( 1 << 3);
-
-    //   memAddr = io_p2v(P2_DIR_CLR);
-    //   *memAddr |= 0x0000001F;
-
-
+    
       break;
 
     case gpio_read:
