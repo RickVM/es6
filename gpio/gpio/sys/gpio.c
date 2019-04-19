@@ -42,30 +42,27 @@ static ssize_t config_write(struct device *dev, struct device_attribute *attr,
 
   // get connector, pin & direction from data. Save in global. (if not found, return error!)
   result = sscanf(buffer, "%s %d %c", connector , &pinNr, &direction);
-  if(result ==  3) { // OR result == 2? Only set connector+pin.
-    printk(KERN_INFO "Received cmd: Connector: %s Pin: %d Direction: %c\n", connector, pinNr, direction);
-    activePin = (struct Pin*)searchPin(connector, pinNr);
-    if(activePin != NULL) { 
-      // check if initialized
-      // [no] -> initialize
-      // TODO: IMPLEMENT NULL CHECK OR MAKE SURE INIT IS ALWAYS LINKED
-      if(activePin->pinctrl->init() == 0) {
-        if(activePin->pinctrl->set_direction(activePin, direction) != 0) {
-          printk(KERN_WARNING "Could not set pin direction for "
-              "Connector: %s Pin: %d Direction: %c\n", connector, pinNr, direction);
-        } 
-      } else {
-          printk(KERN_WARNING "Could not initialize Connector: %s Pin: %d" 
-                  "perhaps it is used by another device?", connector, pinNr);
+  if(result ==  3) { 
+      printk(KERN_INFO "Received cmd: Connector: %s Pin: %d Direction: %c\n", connector, pinNr, direction);
+      activePin = (struct Pin*)searchPin(connector, pinNr);
+      if(activePin != NULL) { 
+        if (activePin->pinctrl->init != NULL) {
+          printk(KERN_INFO "Executing init");
+          if (activePin->pinctrl->init() != 0) {
+            printk(KERN_WARNING "Could not initialize Connector: %s Pin: %d perhaps it is used by another device?", connector, pinNr);
+            return count > sysfs_max_data_size ? sysfs_max_data_size : count;
+          }
         }
-    }
-    else {
-      printk(KERN_WARNING "Could not find match for Connector: %s Pin: %d", connector, pinNr);
-    }
-  }
-  else {
+        if(activePin->pinctrl->set_direction(activePin, direction) != 0) {
+          printk(KERN_WARNING "Could not set pin direction for Connector: %s Pin: %d Direction: %c\n", connector, pinNr, direction);
+       } 
+    } else {
+      printk(KERN_WARNING "Could not find match for Connector: %s Pin: %d\n", connector, pinNr);
+   }
+  } else {
     printk(KERN_WARNING "Input did not match expected format! Usage: connector pin direction e.g. J1 8 O\n");
   }
+  
   used_buffer_size = count > sysfs_max_data_size ? sysfs_max_data_size : count;
   return used_buffer_size;
 }

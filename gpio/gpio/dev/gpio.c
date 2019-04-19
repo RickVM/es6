@@ -113,6 +113,7 @@ static ssize_t dev_read(struct file *filep, char *buffer, size_t len, loff_t *of
     case gpio_read: // Read the pin that was set in write
         if (pinToRead != NULL) {
             retv = pinToRead->pinctrl->get_value(pinToRead);
+            printk(KERN_INFO "GPIO: Value of %s %d is %d\n", pinToRead->connector, pinToRead->pin, retv);
         } else {
             printk(KERN_WARNING "GPIO: No pin to read from has been selected!\n");
         }

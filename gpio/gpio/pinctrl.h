@@ -32,7 +32,8 @@ struct Registers {
 struct Pin {
     const char* connector;
     unsigned int pin;
-    unsigned int index;
+    unsigned int index_read;
+    unsigned int index_write;
     struct Pinctrl *pinctrl; // pointer to parent
 };
 
