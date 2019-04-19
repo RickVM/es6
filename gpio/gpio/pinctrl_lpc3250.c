@@ -4,12 +4,14 @@
 #define number_pins_port2 13
 #define number_pins_port3 4
 
+#define number_of_pin_controllers 3
+
 #define P2_MUX_SET 0x40028028
 #define EMC_D_SEL 3
 #define LCD_CFG 0x40004054
 #define HCLK_ENABLE 5
 
-static const struct Pinctrl *pinctrls[2] = { &pinctrl_port0, &pinctrl_port2/*, &pinctrl_port3*/ };
+static const struct Pinctrl *pinctrls[number_of_pin_controllers] = { &pinctrl_port0, &pinctrl_port2, &pinctrl_port3};
 
 char conf_to_char(CONF direction) {
   char dir;
@@ -35,7 +37,7 @@ const struct Pin* searchPin(const char* connector, int number) {
     uint8_t k = 0;
     uint8_t i = 0;
 
-    for (k=0; k< 2; k++) {
+    for (k=0; k< number_of_pin_controllers; k++) {
         for (i=0; i<pinctrls[k]->npins; i++) {
             if (strcmp(pinctrls[k]->pins[i].connector, connector) == 0 && pinctrls[k]->pins[i].pin == number) {
                return &pinctrls[k]->pins[i];
@@ -50,20 +52,11 @@ CONF getDirection(struct Pin* pin) {
     unsigned long* memAddr = 0;
     CONF conf = disabled;
     uint32_t dir = -1;
-    printk(KERN_INFO "Connector: %s Pin: %d Index: %d\n", pin->connector, pin->pin, pin->index);
 
-    // See if Pin is configured as input or output
     memAddr = io_p2v(pin->pinctrl->registers.DIR_STATE);
     dir = *memAddr & ( 1UL << pin->index );
-
-    printk(KERN_INFO "Dir value: %d\n", dir);
-
     conf = (CONF) dir >> pin->index;
 
-    printk(KERN_INFO "Value register %lu", *memAddr);
-
-
-    printk(KERN_INFO "Returning direction: %d\n", conf);
     return conf;
 }
 
@@ -76,16 +69,12 @@ int setDirection(struct Pin* pin, const char direction) {
         case 'O':
         case 'o':
             memAddr = io_p2v(pin->pinctrl->registers.DIR_SET);
-            printk(KERN_INFO "Setting register to OUTPUT value: %lu", *memAddr);
             *memAddr |= ( 1UL << pin->index );
-            printk(KERN_INFO "Setting register to OUTPUT value: %lu", *memAddr);
             break;
         case 'I':
         case 'i':
             memAddr = io_p2v(pin->pinctrl->registers.DIR_CLR);
-            printk(KERN_INFO "Setting register to INPUT value: %lu", *memAddr);
             *memAddr |= ( 1UL << pin->index );
-            printk(KERN_INFO "Setting register to INPUT value: %lu", *memAddr);
             break;
         default:
             retv = -1;
@@ -122,15 +111,13 @@ int setValue(struct Pin* pin, int value) {
     unsigned long* memAddr = 0;
     uint8_t retv = 0;
     
-    CONF dir = getDirection(pin);
-
-    switch (dir)
+    switch (value)
     {
-        case input:
+        case 0:
             memAddr = io_p2v(pin->pinctrl->registers.OUTP_CLR);
             *memAddr |= ( 1UL << pin->index );
             break;
-        case output:
+        case 1:
             memAddr = io_p2v(pin->pinctrl->registers.OUTP_SET);
             *memAddr |= ( 1UL << pin->index );
             break;
@@ -151,6 +138,7 @@ int setMux(void) {
 
 int turnOffLcd(void) {
     unsigned long* memAddr = 0;
+    printk(KERN_INFO "Turning off LCD");
     memAddr = io_p2v(LCD_CFG);
     *memAddr |= (1UL << HCLK_ENABLE);
     return 0;
@@ -223,9 +211,9 @@ struct Pinctrl pinctrl_port3 = {
         0x40028004, // OUTP_SET
         0x40028008, // OUTP_CLR
         0x4002800C, // OUTP_STATE
-        0x0, // DIR_SET
-        0x0, // DIR_CLR
-        0x0 // DIR_STATE
+        0x40028010, // P2 DIR_SET
+        0x40028014, // P2 DIR_CLR
+        0x40028018  // P2 DIR_STATE
     },
     number_pins_port3,
     {

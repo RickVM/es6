@@ -103,7 +103,6 @@ static int dev_release(struct inode *inodep, struct file *filep) {
 static ssize_t dev_read(struct file *filep, char *buffer, size_t len, loff_t *offset) {
   int error_count = 0;
   uint8_t retv = -1;
-  unsigned long* memAddr = 0;
 
   switch (minor_num) {
     case gpio_set:
@@ -113,9 +112,7 @@ static ssize_t dev_read(struct file *filep, char *buffer, size_t len, loff_t *of
     
     case gpio_read: // Read the pin that was set in write
         if (pinToRead != NULL) {
-            printk(KERN_INFO "GPIO: Reading pin %d of connector %s!\n", pinToRead->pin, pinToRead->connector);
             retv = pinToRead->pinctrl->get_value(pinToRead);
-            printk(KERN_INFO "GPIO: Value of pin %d of connector %s is %d!\n", pinToRead->pin, pinToRead->connector, retv);
         } else {
             printk(KERN_WARNING "GPIO: No pin to read from has been selected!\n");
         }
@@ -126,7 +123,6 @@ static ssize_t dev_read(struct file *filep, char *buffer, size_t len, loff_t *of
 }
 
 static ssize_t dev_write(struct file *filep, const char *buffer, size_t len, loff_t *offset) {
-  unsigned long* memAddr = 0;
   char connector[3];
   int pinNr = 0;
   int value = 0;
