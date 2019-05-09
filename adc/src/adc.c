@@ -3,12 +3,15 @@
 #include <linux/init.h>
 #include <linux/kdev_t.h>
 #include <linux/cdev.h>
+#include <linux/mutex.h>
 #include <linux/fs.h>
 #include <linux/interrupt.h>
 #include <linux/uaccess.h>
+#include <linux/completion.h>
 #include <mach/hardware.h>
 #include <mach/platform.h>
 #include <mach/irqs.h>
+
 
 #define DEVICE_NAME 		"adc"
 #define ADC_NUMCHANNELS		3
@@ -29,21 +32,31 @@
 #define AD_POWERDOWN_CTRL   1 << 2
 #define TS_ADC_STROBE       1 << 1
 #define ADC_VALUE_MASK      0x000003FF
-
-static unsigned char    adc_channel = 0;
-static int              adc_values[ADC_NUMCHANNELS] = {0, 0, 0};
-static bool             interrupt_is_gpi = false;
-static bool             adc_handled = false;
-
-DECLARE_WAIT_QUEUE_HEAD(event);
+#define GPI1_EDGE           1 << 23
 
 static irqreturn_t      adc_interrupt (int irq, void * dev_id);
 static irqreturn_t      gp_interrupt (int irq, void * dev_id);
 
+struct state {
+    int                 adc_values[ADC_NUMCHANNELS];
+    bool                interrupt_is_gpi;
+    unsigned char       adc_channel;
+    struct completion   completion;
+    struct mutex        mlock;
+};
+
+static struct state st;
 
 static void adc_init (void)
 {
 	unsigned long data;
+    st.adc_values[0] = 0;
+    st.adc_values[1] = 0;
+    st.adc_values[2] = 0;
+    st.adc_channel = 0;
+    
+    init_completion(&st.completion);
+    mutex_init(&st.mlock);
 
 	// set 32 KHz RTC clock
     data = READ_REG (ADCLK_CTRL);
@@ -61,27 +74,26 @@ static void adc_init (void)
     data |=  0x0280;
     WRITE_REG (data, ADC_SELECT);
     
-    // TODO
-    // aanzetten reset?? (wat is dat)
+    //Turn on ADC
     data = READ_REG(ADC_CTRL);
 	data |= AD_POWERDOWN_CTRL;
 	WRITE_REG (data, ADC_CTRL);
 
+    // Enable Touchscreen interrupt
 	data = READ_REG(SIC1_ER);
 	data |= IRQ_LPC32XX_TS_IRQ;
     WRITE_REG (data, SIC1_ER);
 
     // SET activation TYPE
     data = READ_REG(SIC2_ATR);
-    data |= IRQ_LPC32XX_GPI_01;
+    data |= GPI1_EDGE;
     WRITE_REG(data, SIC2_ATR);
 
-	//IRQ init
-    if (request_irq (IRQ_LPC32XX_TS_IRQ, adc_interrupt, IRQF_DISABLED, "adc", (void*)'a') != 0)
+    if (request_irq (IRQ_LPC32XX_TS_IRQ, adc_interrupt, IRQF_DISABLED, "adc", NULL) != 0)
     {
         printk(KERN_ALERT "ADC IRQ request failed\n");
     }
-    if (request_irq (IRQ_LPC32XX_GPI_01, gp_interrupt, IRQF_DISABLED, "gpi", (void*)'c') != 0)
+    if (request_irq (IRQ_LPC32XX_GPI_01, gp_interrupt, IRQF_DISABLED, "gpi", NULL) != 0)
     {
         printk (KERN_ALERT "GP IRQ request failed\n");
     }
@@ -102,8 +114,7 @@ static void adc_start (unsigned char channel)
 	//selecteer het kanaal, eerst uitlezen, kanaalbits negeren en dan alleen de kanaalbits veranderen (0x0030)
 	WRITE_REG((data & ~0x0030) | ((channel << 4) & 0x0030), ADC_SELECT);
 
-	//nu ook globaal zetten zodat we de interrupt kunnen herkennen
-	adc_channel = channel;
+	st.adc_channel = channel;
 
 	data = READ_REG(ADC_CTRL);
 	data |= TS_ADC_STROBE;
@@ -112,47 +123,40 @@ static void adc_start (unsigned char channel)
 
 static irqreturn_t adc_interrupt (int irq, void * dev_id)
 {
-    printk(KERN_INFO "IRQ %d, dev_id: %c \n", irq, (char)dev_id);
-    adc_values[adc_channel] = READ_REG(ADC_VALUE) & ADC_VALUE_MASK;
-    printk(KERN_INFO "ADC(%d)=%d\n", adc_channel, adc_values[adc_channel]);
+    st.adc_values[st.adc_channel] = READ_REG(ADC_VALUE) & ADC_VALUE_MASK;
+    printk(KERN_INFO "ADC(%d)=%d\n", st.adc_channel, st.adc_values[st.adc_channel]);
 
-    if (interrupt_is_gpi) 
+    if (st.interrupt_is_gpi) 
     {
-        adc_channel++;
-        if (adc_channel < ADC_NUMCHANNELS)
+        st.adc_channel++;
+        if (st.adc_channel < ADC_NUMCHANNELS)
         {
-            adc_start (adc_channel);
+            adc_start (st.adc_channel);
         }
         else 
         {
-            interrupt_is_gpi = false;
+            st.interrupt_is_gpi = false;
         }
     } 
     else 
     {
-        adc_handled = true;
-        wake_up_interruptible(&event);
+        complete(&st.completion);
     }
-
-
     return (IRQ_HANDLED);
 }
 
 static irqreturn_t gp_interrupt(int irq, void * dev_id)
 {
-    printk(KERN_INFO "ADC GP INTERRUPT TRIGGERED.");
-    interrupt_is_gpi = true;
+    st.interrupt_is_gpi = true;
     adc_start (0);
     return (IRQ_HANDLED);
 }
-
 
 static void adc_exit (void)
 {
     free_irq (IRQ_LPC32XX_TS_IRQ, NULL);
     free_irq (IRQ_LPC32XX_GPI_01, NULL);
 }
-
 
 static ssize_t device_read (struct file * file, char __user * buf, size_t length, loff_t * f_pos)
 {
@@ -174,13 +178,15 @@ static ssize_t device_read (struct file * file, char __user * buf, size_t length
 		return -EFAULT;
     }
 
-    adc_handled = false;
+    mutex_lock(&st.mlock);
+
     adc_start (channel);
-    wait_event_interruptible(event, adc_handled);
+    wait_for_completion(&st.completion);
+    written = sprintf(retv_buffer, "%d", st.adc_values[st.adc_channel]);
 
-    written = sprintf(retv_buffer, "%d", adc_values[adc_channel]);
+    mutex_unlock(&st.mlock);
+
     toWrite = copy_to_user(buf, retv_buffer, written);
-
     if (toWrite)
     {
         written = 0;
@@ -194,7 +200,6 @@ static ssize_t device_read (struct file * file, char __user * buf, size_t length
 
 static int device_open (struct inode * inode, struct file * file)
 {
-   
     int channel = MINOR(inode -> i_rdev);
     file->private_data = (void*)channel;
 
@@ -206,7 +211,6 @@ static int device_open (struct inode * inode, struct file * file)
 static int device_release (struct inode * inode, struct file * file)
 {
     printk (KERN_WARNING DEVICE_NAME ": device_release()\n");
-
 
     module_put(THIS_MODULE);
 	return 0;
