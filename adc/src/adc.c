@@ -19,7 +19,7 @@
 #define	ADC_CTRL			io_p2v(0x40048008)
 #define ADC_VALUE           io_p2v(0x40048048)
 #define SIC2_ATR            io_p2v(0x40010010)
-#define SIC1_ER	            io_p2v(0x4000C000)
+#define SIC1_ER	            LPC32XX_SIC1_BASE
 
 #define READ_REG(a)         (*(volatile unsigned int *)(a))
 #define WRITE_REG(b,a)      (*(volatile unsigned int *)(a) = (b))
@@ -27,7 +27,7 @@
 // ADC and interrupt enable
 #define AD_POWERDOWN_CTRL   1 << 2
 #define TS_ADC_STROBE       1 << 1
-#define ADC_VALUE_MASK      0x3FF
+#define ADC_VALUE_MASK      0x000003FF
 
 static unsigned char    adc_channel = 0;
 static int              adc_values[ADC_NUMCHANNELS] = {0, 0, 0};
