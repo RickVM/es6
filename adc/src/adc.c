@@ -18,6 +18,7 @@
 #define	ADC_CTRL			io_p2v(0x40048008)
 #define ADC_VALUE           io_p2v(0x40048048)
 #define SIC2_ATR            io_p2v(0x40010010)
+#define SIC1_ER	            io_p2v(0x4000C000)
 
 #define READ_REG(a)         (*(volatile unsigned int *)(a))
 #define WRITE_REG(b,a)      (*(volatile unsigned int *)(a) = (b))
@@ -25,6 +26,9 @@
 // ADC and interrupt enable
 #define AD_POWERDOWN_CTRL   1 << 2
 #define ADC_INT_ENABLE      IRQ_LPC32XX_TS_IRQ
+
+#define GPI_1_EDGE          1 << 23
+
 
 static unsigned char    adc_channel = 0;
 static int              adc_values[ADC_NUMCHANNELS] = {0, 0, 0};
@@ -54,7 +58,6 @@ static void adc_init (void)
     data |=  0x0280;
     WRITE_REG (data, ADC_SELECT);
 
-	
 
     // TODO
     // aanzetten reset?? (wat is dat)
@@ -63,15 +66,20 @@ static void adc_init (void)
 	WRITE_REG (data, ADC_CTRL);
 
 	data = READ_REG(SIC1_ER);
-	data |= ADC_INT;
+	data |= ADC_INT_ENABLE;
     WRITE_REG (data, SIC1_ER);
 
+    // SET activation TYPE
+    data = READ_REG(SIC2_ATR);
+    data |= GPI_1_EDGE;
+    WRITE_REG(data, SIC2_ATR);
+
 	//IRQ init
-    if (request_irq (IRQ_LPC32XX_TS_IRQ, adc_interrupt, IRQF_DISABLED, "adc_interrupt", NULL) != 0)
+    if (request_irq (IRQ_LPC32XX_TS_IRQ, adc_interrupt, IRQF_DISABLED, "adc", NULL) != 0)
     {
         printk(KERN_ALERT "ADC IRQ request failed\n");
     }
-    if (request_irq (IRQ_LPC32XX_GPI_01, gp_interrupt, IRQF_DISABLED, "gp_interrupt", NULL) != 0)
+    if (request_irq (IRQ_LPC32XX_GPI_01, gp_interrupt, IRQF_DISABLED, "gpi", NULL) != 0)
     {
         printk (KERN_ALERT "GP IRQ request failed\n");
     }
@@ -100,7 +108,7 @@ static void adc_start (unsigned char channel)
 
 static irqreturn_t adc_interrupt (int irq, void * dev_id)
 {
-    adc_values[adc_channel] = /* TODO: read ADC */;
+    adc_values[adc_channel] = 1; /* TODO: read ADC */
     printk(KERN_WARNING "ADC(%d)=%d\n", adc_channel, adc_values[adc_channel]);
 
     // start the next channel:
@@ -114,6 +122,7 @@ static irqreturn_t adc_interrupt (int irq, void * dev_id)
 
 static irqreturn_t gp_interrupt(int irq, void * dev_id)
 {
+    printk(KERN_INFO "ADC GP INTERRUPT TRIGGERED.");
     adc_start (0);
 
     return (IRQ_HANDLED);
@@ -122,8 +131,8 @@ static irqreturn_t gp_interrupt(int irq, void * dev_id)
 
 static void adc_exit (void)
 {
-    free_irq (/* TODO */, NULL);
-    free_irq (/* TODO */, NULL);
+    free_irq (IRQ_LPC32XX_TS_IRQ, NULL);
+    free_irq (IRQ_LPC32XX_GPI_01, NULL);
 }
 
 
