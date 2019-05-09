@@ -14,8 +14,8 @@
 #define ADC_NUMCHANNELS		3
 
 // adc registers
-#define	ADCLK_CTRL			io_p2v(0x400040B4)
-#define	ADCLK_CTRL1			io_p2v(0x40004060)
+#define	ADCLK_CTRL			LPC32XX_CLKPWR_ADC_CLK_CTRL
+#define	ADCLK_CTRL1			LPC32XX_CLKPWR_ADC_CLK_CTRL_1
 #define	ADC_SELECT			io_p2v(0x40048004)
 #define	ADC_CTRL			io_p2v(0x40048008)
 #define ADC_VALUE           io_p2v(0x40048048)
@@ -27,7 +27,6 @@
 
 // ADC and interrupt enable
 #define AD_POWERDOWN_CTRL   1 << 2
-#define GPI_1_EDGE          1 << 23
 #define TS_ADC_STROBE       1 << 1
 #define ADC_VALUE_MASK      0x3FF
 
@@ -74,7 +73,7 @@ static void adc_init (void)
 
     // SET activation TYPE
     data = READ_REG(SIC2_ATR);
-    data |= GPI_1_EDGE;
+    data |= IRQ_LPC32XX_GPI_01;
     WRITE_REG(data, SIC2_ATR);
 
 	//IRQ init
