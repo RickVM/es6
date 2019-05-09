@@ -1,6 +1,7 @@
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/init.h>
+#include <linux/kdev_t.h>
 #include <linux/cdev.h>
 #include <linux/fs.h>
 #include <linux/interrupt.h>
@@ -28,7 +29,7 @@
 #define ADC_INT_ENABLE      IRQ_LPC32XX_TS_IRQ
 
 #define GPI_1_EDGE          1 << 23
-
+#define ADC_VALUE_MASK      0x3FF
 
 static unsigned char    adc_channel = 0;
 static int              adc_values[ADC_NUMCHANNELS] = {0, 0, 0};
@@ -102,16 +103,16 @@ static void adc_start (unsigned char channel)
 	//nu ook globaal zetten zodat we de interrupt kunnen herkennen
 	adc_channel = channel;
 
-	// start conversie
-    // TODO
+	data = READ_REG(ADC_CTRL);
+	data |= TS_ADC_STROBE;
+    WRITE_REG (data, ADC_CTRL);
 }
 
 static irqreturn_t adc_interrupt (int irq, void * dev_id)
 {
-    adc_values[adc_channel] = 1; /* TODO: read ADC */
-    printk(KERN_WARNING "ADC(%d)=%d\n", adc_channel, adc_values[adc_channel]);
+    adc_values[adc_channel] = READ_REG(ADC_VALUE) & ADC_VALUE_MASK;
+    printk(KERN_INFO "ADC(%d)=%d\n", adc_channel, adc_values[adc_channel]);
 
-    // start the next channel:
     adc_channel++;
     if (adc_channel < ADC_NUMCHANNELS)
     {
@@ -161,9 +162,9 @@ static ssize_t device_read (struct file * file, char __user * buf, size_t length
 
 static int device_open (struct inode * inode, struct file * file)
 {
-    // get channel from 'inode'
-    int channel = 0;
-
+   
+    int channel = MINOR(inodePtr -> i_rdev);
+    //TODO: Save channel in file
 
     try_module_get(THIS_MODULE);
     return 0;
