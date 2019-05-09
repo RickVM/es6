@@ -163,8 +163,8 @@ static ssize_t device_read (struct file * file, char __user * buf, size_t length
 static int device_open (struct inode * inode, struct file * file)
 {
    
-    int channel = MINOR(inodePtr -> i_rdev);
-    //TODO: Save channel in file
+    int channel = MINOR(inode -> i_rdev);
+    file->private_data = (void*)channel;
 
     try_module_get(THIS_MODULE);
     return 0;
