@@ -25,10 +25,8 @@
 
 // ADC and interrupt enable
 #define AD_POWERDOWN_CTRL   1 << 2
-#define ADC_INT_ENABLE      IRQ_LPC32XX_TS_IRQ
-
 #define GPI_1_EDGE          1 << 23
-
+#define TS_ADC_STROBE       1 << 1
 
 static unsigned char    adc_channel = 0;
 static int              adc_values[ADC_NUMCHANNELS] = {0, 0, 0};
@@ -66,7 +64,7 @@ static void adc_init (void)
 	WRITE_REG (data, ADC_CTRL);
 
 	data = READ_REG(SIC1_ER);
-	data |= ADC_INT_ENABLE;
+	data |= IRQ_LPC32XX_TS_IRQ;
     WRITE_REG (data, SIC1_ER);
 
     // SET activation TYPE
@@ -96,6 +94,7 @@ static void adc_start (unsigned char channel)
     }
 
 	data = READ_REG (ADC_SELECT);
+
 	//selecteer het kanaal, eerst uitlezen, kanaalbits negeren en dan alleen de kanaalbits veranderen (0x0030)
 	WRITE_REG((data & ~0x0030) | ((channel << 4) & 0x0030), ADC_SELECT);
 
