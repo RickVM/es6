@@ -5,6 +5,7 @@
 #include <linux/cdev.h>
 #include <linux/fs.h>
 #include <linux/interrupt.h>
+#include <linux/uaccess.h>
 #include <mach/hardware.h>
 #include <mach/platform.h>
 #include <mach/irqs.h>
@@ -32,7 +33,10 @@
 
 static unsigned char    adc_channel = 0;
 static int              adc_values[ADC_NUMCHANNELS] = {0, 0, 0};
+static bool             interrupt_is_gpi = false;
+static bool             adc_handled = false;
 
+DECLARE_WAIT_QUEUE_HEAD(event);
 
 static irqreturn_t      adc_interrupt (int irq, void * dev_id);
 static irqreturn_t      gp_interrupt (int irq, void * dev_id);
@@ -57,8 +61,7 @@ static void adc_init (void)
     data &= ~0x03c0;
     data |=  0x0280;
     WRITE_REG (data, ADC_SELECT);
-
-
+    
     // TODO
     // aanzetten reset?? (wat is dat)
     data = READ_REG(ADC_CTRL);
@@ -75,11 +78,11 @@ static void adc_init (void)
     WRITE_REG(data, SIC2_ATR);
 
 	//IRQ init
-    if (request_irq (IRQ_LPC32XX_TS_IRQ, adc_interrupt, IRQF_DISABLED, "adc", NULL) != 0)
+    if (request_irq (IRQ_LPC32XX_TS_IRQ, adc_interrupt, IRQF_DISABLED, "adc", (void*)'a') != 0)
     {
         printk(KERN_ALERT "ADC IRQ request failed\n");
     }
-    if (request_irq (IRQ_LPC32XX_GPI_01, gp_interrupt, IRQF_DISABLED, "gpi", NULL) != 0)
+    if (request_irq (IRQ_LPC32XX_GPI_01, gp_interrupt, IRQF_DISABLED, "gpi", (void*)'c') != 0)
     {
         printk (KERN_ALERT "GP IRQ request failed\n");
     }
@@ -110,22 +113,37 @@ static void adc_start (unsigned char channel)
 
 static irqreturn_t adc_interrupt (int irq, void * dev_id)
 {
+    printk(KERN_INFO "IRQ %d, dev_id: %c \n", irq, (char)dev_id);
     adc_values[adc_channel] = READ_REG(ADC_VALUE) & ADC_VALUE_MASK;
     printk(KERN_INFO "ADC(%d)=%d\n", adc_channel, adc_values[adc_channel]);
 
-    adc_channel++;
-    if (adc_channel < ADC_NUMCHANNELS)
+    if (interrupt_is_gpi) 
     {
-        adc_start (adc_channel);
+        adc_channel++;
+        if (adc_channel < ADC_NUMCHANNELS)
+        {
+            adc_start (adc_channel);
+        }
+        else 
+        {
+            interrupt_is_gpi = false;
+        }
+    } 
+    else 
+    {
+        adc_handled = true;
+        wake_up_interruptible(&event);
     }
+
+
     return (IRQ_HANDLED);
 }
 
 static irqreturn_t gp_interrupt(int irq, void * dev_id)
 {
     printk(KERN_INFO "ADC GP INTERRUPT TRIGGERED.");
+    interrupt_is_gpi = true;
     adc_start (0);
-
     return (IRQ_HANDLED);
 }
 
@@ -139,26 +157,41 @@ static void adc_exit (void)
 
 static ssize_t device_read (struct file * file, char __user * buf, size_t length, loff_t * f_pos)
 {
-	int     channel = (int) file->private_data;
-    int     bytes_read = 0;
+	int channel         = (int) file->private_data;
+    int toWrite         = 0;
+    int written         = 0;
+    char retv_buffer[128];
 
     printk (KERN_WARNING DEVICE_NAME ":device_read(%d)\n", channel);
+
+    if (*f_pos > 0)
+    {
+        *f_pos = 0;
+        return 0;
+    }
 
     if (channel < 0 || channel >= ADC_NUMCHANNELS)
     {
 		return -EFAULT;
     }
 
+    adc_handled = false;
     adc_start (channel);
+    wait_event_interruptible(event, adc_handled);
 
-    // TODO: wait for end-of-conversion,
-    // read adc and copy it into 'buf'
+    written = sprintf(retv_buffer, "%d", adc_values[adc_channel]);
+    toWrite = copy_to_user(buf, retv_buffer, written);
 
-    return (bytes_read);
+    if (toWrite)
+    {
+        written = 0;
+        printk(KERN_ERR "Could not write to user space");
+        return -EFAULT;
+    }
+
+    *f_pos = written;
+    return (written);
 }
-
-
-
 
 static int device_open (struct inode * inode, struct file * file)
 {
