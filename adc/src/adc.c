@@ -22,6 +22,9 @@
 #define READ_REG(a)         (*(volatile unsigned int *)(a))
 #define WRITE_REG(b,a)      (*(volatile unsigned int *)(a) = (b))
 
+// ADC and interrupt enable
+#define AD_POWERDOWN_CTRL   1 << 2
+#define ADC_INT_ENABLE      IRQ_LPC32XX_TS_IRQ
 
 static unsigned char    adc_channel = 0;
 static int              adc_values[ADC_NUMCHANNELS] = {0, 0, 0};
@@ -51,15 +54,24 @@ static void adc_init (void)
     data |=  0x0280;
     WRITE_REG (data, ADC_SELECT);
 
-	// aanzetten adc en reset
+	
+
     // TODO
+    // aanzetten reset?? (wat is dat)
+    data = READ_REG(ADC_CTRL);
+	data |= AD_POWERDOWN_CTRL;
+	WRITE_REG (data, ADC_CTRL);
+
+	data = READ_REG(SIC1_ER);
+	data |= ADC_INT;
+    WRITE_REG (data, SIC1_ER);
 
 	//IRQ init
-    if (request_irq (/* TODO */, adc_interrupt, IRQF_DISABLED, "", NULL) != 0)
+    if (request_irq (IRQ_LPC32XX_TS_IRQ, adc_interrupt, IRQF_DISABLED, "adc_interrupt", NULL) != 0)
     {
         printk(KERN_ALERT "ADC IRQ request failed\n");
     }
-    if (request_irq (/* TODO */, gp_interrupt, IRQF_DISABLED, "", NULL) != 0)
+    if (request_irq (IRQ_LPC32XX_GPI_01, gp_interrupt, IRQF_DISABLED, "gp_interrupt", NULL) != 0)
     {
         printk (KERN_ALERT "GP IRQ request failed\n");
     }
@@ -222,6 +234,6 @@ void cleanup_module()
 module_init(adcdev_init);
 
 MODULE_LICENSE("GPL");
-MODULE_AUTHOR("Joris Geurts, Tobias Neyssen & Leon Leijssen");
+MODULE_AUTHOR("Simon Lit & Rick van Melis");
 MODULE_DESCRIPTION("ADC Driver");
 
