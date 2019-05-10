@@ -35,7 +35,7 @@
 #define GPI1_EDGE           1 << 23
 
 static irqreturn_t      adc_interrupt (int irq, void * dev_id);
-static irqreturn_t      gp_interrupt (int irq, void * dev_id);
+static irqreturn_t      gp_thread_interrupt (int irq, void * dev_id);
 
 struct state {
     int                 adc_values[ADC_NUMCHANNELS];
@@ -93,7 +93,7 @@ static void adc_init (void)
     {
         printk(KERN_ALERT "ADC IRQ request failed\n");
     }
-    if (request_irq (IRQ_LPC32XX_GPI_01, gp_interrupt, IRQF_DISABLED, "gpi", NULL) != 0)
+    if (request_threaded_irq (IRQ_LPC32XX_GPI_01, NULL, gp_thread_interrupt, IRQF_DISABLED, "gpi", NULL) != 0)
     {
         printk (KERN_ALERT "GP IRQ request failed\n");
     }
@@ -136,6 +136,7 @@ static irqreturn_t adc_interrupt (int irq, void * dev_id)
         else 
         {
             st.interrupt_is_gpi = false;
+            complete(&st.completion);
 
             // RESET TEST PIN
 
@@ -151,8 +152,15 @@ static irqreturn_t adc_interrupt (int irq, void * dev_id)
     return (IRQ_HANDLED);
 }
 
-static irqreturn_t gp_interrupt(int irq, void * dev_id)
+static void handleInterrupt(void) {
+
+}
+
+
+static irqreturn_t gp_thread_interrupt(int irq, void * dev_id)
 {
+    mutex_lock(&st.mlock);
+
     // TESTING SPEED OF GP_INTERRUPT
     // Setting pin{ "J3", 58, 5, 5, &pinctrl_port2 } P2.5
     unsigned long* memAddr = 0;
@@ -162,8 +170,14 @@ static irqreturn_t gp_interrupt(int irq, void * dev_id)
 
     st.interrupt_is_gpi = true;
     adc_start (0);
+
+    wait_for_completion(&st.completion); // We cant simply unlock after starting adc in this design, we have to wait untill the adc conversion is complete.
+
+    mutex_unlock(&st.mlock);
     return (IRQ_HANDLED);
 }
+
+
 
 static void adc_exit (void)
 {
