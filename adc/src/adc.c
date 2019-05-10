@@ -152,11 +152,6 @@ static irqreturn_t adc_interrupt (int irq, void * dev_id)
     return (IRQ_HANDLED);
 }
 
-static void handleInterrupt(void) {
-
-}
-
-
 static irqreturn_t gp_thread_interrupt(int irq, void * dev_id)
 {
     mutex_lock(&st.mlock);
