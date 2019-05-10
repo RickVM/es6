@@ -119,10 +119,25 @@ static void adc_start (unsigned char channel)
 	data = READ_REG(ADC_CTRL);
 	data |= TS_ADC_STROBE;
     WRITE_REG (data, ADC_CTRL);
+
+    // TESTING SPEED OF ADC_INTERRUPT
+    // Setting pin{ "J3", 58, 5, 5, &pinctrl_port2 } P2.5
+    unsigned long* memAddr = 0;
+    memAddr = io_p2v(0x40028020);
+    *memAddr |= (1UL << 5);
 }
 
 static irqreturn_t adc_interrupt (int irq, void * dev_id)
 {
+
+
+            // RESET TEST PIN
+
+            unsigned long* memAddr = 0;
+            memAddr = io_p2v(0x40028024);
+            *memAddr |= (1UL << 5);
+            
+
     st.adc_values[st.adc_channel] = READ_REG(ADC_VALUE) & ADC_VALUE_MASK;
     printk(KERN_INFO "ADC(%d)=%d\n", st.adc_channel, st.adc_values[st.adc_channel]);
 
@@ -137,12 +152,6 @@ static irqreturn_t adc_interrupt (int irq, void * dev_id)
         {
             st.interrupt_is_gpi = false;
             complete(&st.completion);
-
-            // RESET TEST PIN
-
-            unsigned long* memAddr = 0;
-            memAddr = io_p2v(0x40028024);
-            *memAddr |= (1UL << 5);
         }
     } 
     else 
@@ -155,14 +164,6 @@ static irqreturn_t adc_interrupt (int irq, void * dev_id)
 static irqreturn_t gp_thread_interrupt(int irq, void * dev_id)
 {
     mutex_lock(&st.mlock);
-
-    // TESTING SPEED OF GP_INTERRUPT
-    // Setting pin{ "J3", 58, 5, 5, &pinctrl_port2 } P2.5
-    unsigned long* memAddr = 0;
-    memAddr = io_p2v(0x40028020);
-    *memAddr |= (1UL << 5);
-
-
     st.interrupt_is_gpi = true;
     adc_start (0);
 
@@ -204,6 +205,7 @@ static ssize_t device_read (struct file * file, char __user * buf, size_t length
 
     adc_start (channel);
     wait_for_completion(&st.completion);
+
     written = sprintf(retv_buffer, "%d", st.adc_values[st.adc_channel]);
 
     mutex_unlock(&st.mlock);
