@@ -136,6 +136,12 @@ static irqreturn_t adc_interrupt (int irq, void * dev_id)
         else 
         {
             st.interrupt_is_gpi = false;
+
+            // RESET TEST PIN
+
+            unsigned long* memAddr = 0;
+            memAddr = io_p2v(0x40028024);
+            *memAddr |= (1UL << 5);
         }
     } 
     else 
@@ -147,6 +153,13 @@ static irqreturn_t adc_interrupt (int irq, void * dev_id)
 
 static irqreturn_t gp_interrupt(int irq, void * dev_id)
 {
+    // TESTING SPEED OF GP_INTERRUPT
+    // Setting pin{ "J3", 58, 5, 5, &pinctrl_port2 } P2.5
+    unsigned long* memAddr = 0;
+    memAddr = io_p2v(0x40028020);
+    *memAddr |= (1UL << 5);
+
+
     st.interrupt_is_gpi = true;
     adc_start (0);
     return (IRQ_HANDLED);
