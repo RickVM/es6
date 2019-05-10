@@ -35,7 +35,7 @@
 #define GPI1_EDGE           1 << 23
 
 static irqreturn_t      adc_interrupt (int irq, void * dev_id);
-static irqreturn_t      gp_thread_interrupt (int irq, void * dev_id);
+static irqreturn_t      gp_bottom_isr (int irq, void * dev_id);
 
 struct state {
     int                 adc_values[ADC_NUMCHANNELS];
@@ -93,7 +93,7 @@ static void adc_init (void)
     {
         printk(KERN_ALERT "ADC IRQ request failed\n");
     }
-    if (request_threaded_irq (IRQ_LPC32XX_GPI_01, NULL, gp_thread_interrupt, IRQF_DISABLED, "gpi", NULL) != 0) //Leave top half handler NULL since we have no need for it. 
+    if (request_threaded_irq (IRQ_LPC32XX_GPI_01, NULL, gp_bottom_isr, IRQF_DISABLED, "gpi", NULL) != 0) //Leave top half handler NULL since the default is fine. 
     {
         printk (KERN_ALERT "GP IRQ request failed\n");
     }
@@ -147,9 +147,10 @@ static irqreturn_t adc_interrupt (int irq, void * dev_id)
 }
 
 // Since this is our "Bottom-half" threaded ISR we can safely sleep / lock untill the time is right.
-// The IRQ wont be disabled for any additional time since the top half handler is left to default.
-static irqreturn_t gp_thread_interrupt(int irq, void * dev_id)
+// The IRQ wont be disabled for any additional time since the top half handler is left to default (NULL).
+static irqreturn_t gp_bottom_isr(int irq, void * dev_id)
 {
+    // Lock mainly because we cannot enter here and in our device_read at the same time.
     mutex_lock(&st.mlock);
 
     st.interrupt_is_gpi = true;
