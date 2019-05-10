@@ -93,7 +93,7 @@ static void adc_init (void)
     {
         printk(KERN_ALERT "ADC IRQ request failed\n");
     }
-    if (request_threaded_irq (IRQ_LPC32XX_GPI_01, NULL, gp_thread_interrupt, IRQF_DISABLED, "gpi", NULL) != 0)
+    if (request_threaded_irq (IRQ_LPC32XX_GPI_01, NULL, gp_thread_interrupt, IRQF_DISABLED, "gpi", NULL) != 0) //Leave top half handler NULL since we have no need for it. 
     {
         printk (KERN_ALERT "GP IRQ request failed\n");
     }
@@ -146,11 +146,8 @@ static irqreturn_t adc_interrupt (int irq, void * dev_id)
     return (IRQ_HANDLED);
 }
 
-static void handleInterrupt(void) {
-
-}
-
-
+// Since this is our "Bottom-half" threaded ISR we can safely sleep / lock untill the time is right.
+// The IRQ wont be disabled for any additional time since the top half handler is left to default.
 static irqreturn_t gp_thread_interrupt(int irq, void * dev_id)
 {
     mutex_lock(&st.mlock);
