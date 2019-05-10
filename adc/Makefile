@@ -4,9 +4,6 @@ KDIR := ~/felabs/sysdev/tinysystem/linux-2.6.34/
 
 obj-m := src/adc.o
 
-gpio-dev-objs := dev/gpio.o pinctrl_lpc3250.o
-gpio-sys-objs := sys/gpio.o pinctrl_lpc3250.o
-
 default: kernel
 
 kernel:
